@@ -1,0 +1,4 @@
+vless://1f34338d-bdcf-4ed8-a9f0-75cd8f3e5163@64.186.226.51:443?encryption=none&security=reality&flow=xtls-rprx-vision&type=tcp&sni=www.ucla.edu&fp=chrome&pbk=eO0z68eg6neRtBIZue9MVcG3-nI3LCZsaYPCZCaX4BY&sid=389b3f5c#HUACHI-LA-主力
+vless://1f34338d-bdcf-4ed8-a9f0-75cd8f3e5163@64.186.226.51:8443?encryption=none&security=reality&flow=xtls-rprx-vision&type=tcp&sni=www.usc.edu&fp=chrome&pbk=ZM_BOmMuW1j6P50Es_mz9eBb438PM7WiqPhFSMQj3EM&sid=688b95f9#HUACHI-LA-备用
+vless://1f34338d-bdcf-4ed8-a9f0-75cd8f3e5163@174.137.51.201:8443?encryption=none&security=reality&flow=xtls-rprx-vision&type=tcp&sni=www.usc.edu&fp=chrome&pbk=boPg2EMRj11PyD6pr7nSM5gBicLuj5_Kbmi9qFp8oSM&sid=3b4eef35#HUACHI-BWH-备用
+vless://1f34338d-bdcf-4ed8-a9f0-75cd8f3e5163@174.137.51.201:443?encryption=none&security=reality&flow=xtls-rprx-vision&type=tcp&sni=www.ucla.edu&fp=chrome&pbk=boPg2EMRj11PyD6pr7nSM5gBicLuj5_Kbmi9qFp8oSM&sid=583022be#HUACHI-BWH-备用2
