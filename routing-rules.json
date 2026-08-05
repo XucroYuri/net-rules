@@ -4,14 +4,27 @@
     "rules": [
         {
             "type": "field",
-            "outboundTag": "direct",
+            "outboundTag": "block",
             "protocol": ["bittorrent"]
         },
         {
             "type": "field",
             "outboundTag": "block",
+            "domain": ["geosite:category-ads-all"]
+        },
+        {
+            "type": "field",
+            "outboundTag": "direct",
+            "ip": ["geoip:private"]
+        },
+        {
+            "type": "field",
+            "outboundTag": "direct",
             "domain": [
-                "geosite:category-ads-all"
+                "domain:alipay.com",
+                "domain:alipayobjects.com",
+                "domain:pay.weixin.qq.com",
+                "domain:tenpay.com"
             ]
         },
         {
@@ -67,176 +80,13 @@
                 "domain:ramp.network",
                 "domain:transak.com",
                 "domain:mercuryo.io",
-                "domain:nowpayments.io",
-                "domain:alipay.com",
-                "domain:alipayobjects.com",
-                "domain:pay.weixin.qq.com",
-                "domain:tenpay.com"
-            ]
-        },
-        {
-            "type": "field",
-            "outboundTag": "direct",
-            "domain": [
-                "geosite:cn"
-            ]
-        },
-        {
-            "type": "field",
-            "outboundTag": "direct",
-            "ip": [
-                "geoip:private",
-                "geoip:cn"
-            ]
-        },
-        {
-            "type": "field",
-            "outboundTag": "direct",
-            "domain": [
-                "domain:microsoft.com",
-                "domain:visualstudio.com",
-                "domain:github.dev",
-                "domain:msn.com",
-
-                "domain:apple.com",
-                "domain:icloud.com",
-
-                "domain:cloudflare.com",
-
-                "domain:amazon.com",
-                "domain:amazonaws.com",
-
-                "domain:wikipedia.org",
-                "domain:wikimedia.org",
-                "domain:wiktionary.org",
-                "domain:wikibooks.org",
-                "domain:wikinews.org",
-                "domain:wikisource.org",
-                "domain:wikiversity.org",
-                "domain:wikiquote.org",
-
-                "domain:stackoverflow.com",
-                "domain:stackexchange.com",
-
-                "domain:docker.com",
-                "domain:npmjs.org",
-                "domain:npmjs.com",
-                "domain:pypi.org",
-
-                "domain:medium.com",
-                "domain:imdb.com",
-                "domain:archive.org",
-
-                "domain:steamcontent.com",
-                "domain:steamcdn-a.akamaihd.net",
-                "domain:steamstatic.com",
-
-                "domain:hf-mirror.com",
-                "domain:cdn-lfs.huggingface.co",
-                "domain:cdn-lfs-us-1.huggingface.co",
-                "domain:b2.civitai.com"
+                "domain:nowpayments.io"
             ]
         },
         {
             "type": "field",
             "outboundTag": "proxy",
-            "domain": [
-                "domain:anthropic.com",
-                "domain:claude.ai",
-                "domain:openai.com",
-                "domain:chatgpt.com",
-                "domain:oaistatic.com",
-                "domain:oaiusercontent.com",
-                "domain:chat.openai.com",
-                "domain:platform.openai.com",
-                "domain:api.openai.com",
-                "domain:gemini.google.com",
-                "domain:aistudio.google.com",
-                "domain:makersuite.google.com",
-                "domain:generativelanguage.googleapis.com",
-                "domain:ai.google.dev",
-                "domain:perplexity.ai",
-                "domain:pplx.ai",
-                "domain:character.ai",
-                "domain:poe.com",
-                "domain:quora.com",
-                "domain:you.com",
-                "domain:copilot.microsoft.com",
-                "domain:bing.com",
-                "domain:huggingface.co",
-                "domain:hf.co",
-                "domain:replicate.com",
-                "domain:together.ai",
-                "domain:groq.com",
-                "domain:mistral.ai",
-                "domain:openrouter.ai",
-                "domain:civitai.com",
-                "domain:coze.com",
-                "domain:chat.deepseek.com",
-                "domain:tongyi.alibabacloud.com",
-                "domain:zhipuai.ai",
-                "domain:open.bigmodel.ai",
-                "domain:kimi.ai",
-                "domain:api.moonshot.ai",
-                "domain:z.ai",
-                "domain:chat.z.ai",
-                "keyword:openai",
-                "keyword:chatgpt",
-                "keyword:claude",
-                "keyword:anthropic",
-                "keyword:generativeai"
-            ]
-        },
-        {
-            "type": "field",
-            "outboundTag": "proxy",
-            "domain": [
-                "domain:google.com",
-                "domain:googleapis.com",
-                "domain:googleusercontent.com",
-                "domain:gstatic.com",
-                "domain:youtube.com",
-                "domain:youtu.be",
-                "domain:ytimg.com",
-                "domain:github.com",
-                "domain:githubusercontent.com",
-                "domain:githubassets.com",
-                "domain:twitter.com",
-                "domain:x.com",
-                "domain:twimg.com",
-                "domain:t.co",
-                "domain:facebook.com",
-                "domain:fbcdn.net",
-                "domain:instagram.com",
-                "domain:whatsapp.com",
-                "domain:telegram.org",
-                "domain:t.me",
-                "domain:reddit.com",
-                "domain:redd.it",
-                "domain:discord.com",
-                "domain:discord.gg",
-                "domain:slack.com",
-                "domain:zoom.us",
-                "domain:dropbox.com",
-                "domain:notion.so",
-                "domain:figma.com",
-                "domain:vercel.com",
-                "domain:netlify.com",
-                "domain:tiktok.com",
-                "domain:pinterest.com",
-                "domain:tumblr.com",
-                "domain:linkedin.com",
-                "domain:imgur.com",
-                "domain:warp.dev",
-                "domain:cursor.sh",
-
-                "domain:adobe.com",
-                "domain:adobestatic.com",
-                "domain:behance.net",
-                "domain:autodesk.com",
-                "domain:midjourney.com",
-                "domain:discordapp.com"
-            ]
+            "network": "tcp,udp"
         }
     ]
 }
