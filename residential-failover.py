@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """
-住宅 IP 自动故障切换 V6。
-所有住宅类别统一使用 R3 -> R4 -> R5 -> R2 -> R1 -> LA -> BWH。
-
-住宅出口全部不可用时，先尝试 LA 公网直出，再尝试 BWH 公网直出。
+住宅 IP 自动故障切换。
+严格 client 分组只使用 R3 -> R4 -> R5；三条住宅线路都不可用时保持失败。
 """
 import json, sqlite3, shutil, subprocess, sys, os, tempfile, time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
+from typing import Any
 
 CONFIG = '/usr/local/x-ui/bin/config.json'
 DB = '/etc/x-ui/x-ui.db'
@@ -204,7 +203,7 @@ def probe(key):
     return probe_socks(key)
 
 
-def load_state():
+def load_state() -> dict[str, Any]:
     if os.path.exists(STATE_FILE):
         with open(STATE_FILE) as f: return json.load(f)
     return {
@@ -216,13 +215,13 @@ def load_state():
     }
 
 
-def save_state(s):
+def save_state(s: dict[str, Any]):
     s['_updated'] = datetime.now(timezone.utc).isoformat()
     os.makedirs(os.path.dirname(STATE_FILE),exist_ok=True)
     with open(STATE_FILE,'w') as f: json.dump(s,f,indent=2)
 
 
-def ensure_state_shape(state):
+def ensure_state_shape(state: dict[str, Any]) -> dict[str, Any]:
     for key in RESOURCE_KEYS:
         state.setdefault(key, {'fail_count':0,'success_count':0,'healthy':False})
     state.setdefault('outbounds', {})
