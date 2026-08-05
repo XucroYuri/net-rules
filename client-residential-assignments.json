@@ -1,0 +1,81 @@
+{
+  "_updated": "2026-08-05",
+  "_policy": "strict-residential-v1",
+  "_comment": "Primary client assignment. Failover is limited to R3/R4/R5; VPS public fallback is forbidden for these rules.",
+  "failover_order": [
+    "residential-r3",
+    "residential-r4",
+    "residential-r5"
+  ],
+  "groups": {
+    "residential-r3": {
+      "exit_ip": "38.100.67.138",
+      "members": [
+        "xuyu",
+        "yangheng",
+        "yangjingzhou",
+        "panwanjing",
+        "fanhailong",
+        "liulishuo",
+        "maoli",
+        "siyue",
+        "wangxiaoyu",
+        "wenting",
+        "xixi",
+        "yangyu",
+        "yangzixian"
+      ]
+    },
+    "residential-r4": {
+      "exit_ip": "38.100.67.252",
+      "members": [
+        "zhangzuoyin",
+        "zhoutingyun",
+        "sunhuan",
+        "pengzhou",
+        "daiyi",
+        "maoxinyi",
+        "huangyuwan",
+        "liqin",
+        "chenfeng"
+      ]
+    },
+    "residential-r5": {
+      "exit_ip": "38.100.67.131",
+      "members": [
+        "hongge",
+        "dou",
+        "lirui",
+        "liujun",
+        "studio-admin",
+        "wangbo",
+        "weiyuan"
+      ]
+    }
+  },
+  "additional_assignments": {
+    "HUACHI": "residential-r3",
+    "lirui-cdn": "residential-r5"
+  },
+  "client_direct_domains": [
+    "domain:alipay.com",
+    "domain:alipayobjects.com",
+    "domain:pay.weixin.qq.com",
+    "domain:tenpay.com"
+  ],
+  "server_direct_domains": [
+    "domain:cloud.google.com",
+    "domain:firebase.google.com",
+    "domain:googleapis.com",
+    "domain:googleapi.com",
+    "domain:googlecloud.com",
+    "domain:cloud.google",
+    "domain:gcr.io",
+    "domain:pkg.dev",
+    "domain:run.app",
+    "domain:appspot.com",
+    "domain:cloudfunctions.net",
+    "domain:firebaseio.com",
+    "domain:firebaseapp.com"
+  ]
+}
