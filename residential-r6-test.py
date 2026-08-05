@@ -21,6 +21,20 @@ REMOVE = '--remove' in sys.argv
 PROBE = '--probe' in sys.argv
 
 
+def option_value(name):
+    prefix = name + '='
+    for argument in sys.argv[1:]:
+        if argument.startswith(prefix):
+            return argument[len(prefix):]
+    return ''
+
+
+BIND_USER = option_value('--bind-user')
+UNBIND_USER = option_value('--unbind-user')
+if BIND_USER and UNBIND_USER:
+    raise RuntimeError('bind and unbind cannot be used together')
+
+
 def load_env_file(path='/etc/x-ui/residential-socks.env'):
     if not os.path.exists(path):
         return
@@ -81,10 +95,41 @@ def remove_outbound(config):
     config['outbounds'] = [item for item in config.get('outbounds', []) if item.get('tag') != TAG]
 
 
-def validate_no_route_reference(config):
+def validate_no_route_reference(config, allowed_user=None):
     for rule in config.get('routing', {}).get('rules', []):
-        if rule.get('outboundTag') == TAG:
+        if rule.get('outboundTag') == TAG and rule.get('user') != [allowed_user]:
             raise RuntimeError('R6 must remain unbound from client routing rules')
+
+
+def active_users(config):
+    users = set()
+    for inbound in config.get('inbounds', []):
+        for client in (inbound.get('settings') or {}).get('clients') or []:
+            if client.get('email'):
+                users.add(client['email'])
+    return users
+
+
+def remove_user_override(config, user):
+    rules = config.setdefault('routing', {}).setdefault('rules', [])
+    config['routing']['rules'] = [
+        rule for rule in rules
+        if not (rule.get('outboundTag') == TAG and rule.get('user') == [user])
+    ]
+
+
+def add_user_override(config, user):
+    remove_user_override(config, user)
+    rules = config.setdefault('routing', {}).setdefault('rules', [])
+    index = next(
+        (i for i, rule in enumerate(rules) if user in (rule.get('user') or []) and not rule.get('domain')),
+        len(rules),
+    )
+    rules.insert(index, {
+        'type': 'field',
+        'user': [user],
+        'outboundTag': TAG,
+    })
 
 
 def xray_test(config):
@@ -179,7 +224,7 @@ def restart_and_verify(before_routing):
         raise RuntimeError(result.stderr[-1600:])
     time.sleep(3)
     live = load_json(CONFIG)
-    validate_no_route_reference(live)
+    validate_no_route_reference(live, BIND_USER)
     if TAG not in {item.get('tag') for item in live.get('outbounds', [])}:
         raise RuntimeError('residential-r6 missing after x-ui restart')
     if live.get('routing') != before_routing:
@@ -190,13 +235,21 @@ def restart_and_verify(before_routing):
 def main():
     load_env_file()
     live_before = load_json(CONFIG)
-    validate_no_route_reference(live_before)
+    allowed_user_before = BIND_USER or UNBIND_USER
+    validate_no_route_reference(live_before, allowed_user_before)
+    target_user = BIND_USER or UNBIND_USER
+    if target_user and target_user not in active_users(live_before):
+        raise RuntimeError(f'active client not found: {target_user}')
     test_live = json.loads(json.dumps(live_before))
     if REMOVE:
         remove_outbound(test_live)
     else:
         upsert_outbound(test_live, r6_outbound())
-    validate_no_route_reference(test_live)
+    if BIND_USER:
+        add_user_override(test_live, BIND_USER)
+    elif UNBIND_USER:
+        remove_user_override(test_live, UNBIND_USER)
+    validate_no_route_reference(test_live, BIND_USER)
     xray_test(test_live)
 
     connection = sqlite3.connect(DB)
@@ -205,12 +258,17 @@ def main():
         remove_outbound(template)
     else:
         upsert_outbound(template, r6_outbound())
-    validate_no_route_reference(template)
+    if BIND_USER:
+        add_user_override(template, BIND_USER)
+    elif UNBIND_USER:
+        remove_user_override(template, UNBIND_USER)
+    validate_no_route_reference(template, BIND_USER)
 
     print(f'tag={TAG}')
     print(f'action={"remove" if REMOVE else "add"}')
     print(f'dry_run={DRY_RUN}')
-    print('routing_reference=none')
+    print(f'user_override={BIND_USER or ("removed:" + UNBIND_USER if UNBIND_USER else "none")}')
+    print(f'routing_reference={"user-only" if BIND_USER else "none"}')
     print('xray_preflight=PASS')
     if DRY_RUN:
         if PROBE and not REMOVE:
@@ -231,7 +289,7 @@ def main():
         )
         connection.commit()
         connection.close()
-        restart_and_verify(live_before.get('routing'))
+        restart_and_verify(test_live.get('routing'))
         if PROBE and not REMOVE:
             probe_xray(r6_outbound())
             print('xray_r6_probe=PASS')
