@@ -48,9 +48,5 @@
   "domain:ramp.network",
   "domain:transak.com",
   "domain:mercuryo.io",
-  "domain:nowpayments.io",
-  "domain:alipay.com",
-  "domain:alipayobjects.com",
-  "domain:pay.weixin.qq.com",
-  "domain:tenpay.com"
+  "domain:nowpayments.io"
 ]
