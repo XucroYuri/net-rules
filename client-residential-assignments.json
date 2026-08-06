@@ -1,17 +1,38 @@
 {
   "_updated": "2026-08-06",
-  "_policy": "strict-residential-v1",
-  "_comment": "Primary client assignment. Failover is limited to R3/R4/R5; VPS public fallback is forbidden for these rules.",
+  "_policy": "strict-residential-v2",
+  "_comment": "Mapped clients use the assigned residential group. Payment, R1/R2 Google web traffic, and liulishuo OpenAI/ChatGPT traffic use safe residential overrides. VPS fallback outbounds are infrastructure-only and must never appear in client rules.",
   "failover_order": [
+    "residential-r1",
+    "residential-r2",
     "residential-r3",
     "residential-r4",
-    "residential-r5"
+    "residential-r5",
+    "residential-r6"
   ],
   "groups": {
-    "residential-r3": {
-      "exit_ip": "38.100.67.138",
+    "residential-r1": {
+      "exit_ip": "192.204.62.110",
       "members": [
-        "xuyu",
+        "huangyuwan",
+        "hongge",
+        "zhoutingyun",
+        "daiyi",
+        "liqin",
+        "maoxinyi"
+      ],
+      "failover_chain": [
+        "residential-r1",
+        "residential-r2",
+        "residential-r3",
+        "residential-r4",
+        "residential-r5",
+        "residential-r6"
+      ]
+    },
+    "residential-r2": {
+      "exit_ip": "38.150.34.205",
+      "members": [
         "yangheng",
         "yangjingzhou",
         "fanhailong",
@@ -23,38 +44,107 @@
         "xixi",
         "yangyu",
         "yangzixian"
+      ],
+      "failover_chain": [
+        "residential-r2",
+        "residential-r1",
+        "residential-r3",
+        "residential-r4",
+        "residential-r5",
+        "residential-r6"
+      ]
+    },
+    "residential-r3": {
+      "exit_ip": "38.100.67.138",
+      "members": [
+        "HUACHI"
+      ],
+      "failover_chain": [
+        "residential-r3",
+        "residential-r4",
+        "residential-r5",
+        "residential-r6"
       ]
     },
     "residential-r4": {
       "exit_ip": "38.100.67.252",
       "members": [
         "zhangzuoyin",
-        "zhoutingyun",
         "sunhuan",
         "pengzhou",
-        "daiyi",
-        "maoxinyi",
-        "huangyuwan",
-        "liqin",
         "chenfeng"
+      ],
+      "failover_chain": [
+        "residential-r4",
+        "residential-r5",
+        "residential-r6",
+        "residential-r3"
       ]
     },
     "residential-r5": {
       "exit_ip": "38.100.67.131",
       "members": [
-        "hongge",
         "dou",
         "lirui",
         "liujun",
         "studio-admin",
         "wangbo",
         "weiyuan"
+      ],
+      "failover_chain": [
+        "residential-r5",
+        "residential-r6",
+        "residential-r3",
+        "residential-r4"
+      ]
+    },
+    "residential-r6": {
+      "exit_ip": "154.6.235.76",
+      "members": [
+        "xuyu"
+      ],
+      "failover_chain": [
+        "residential-r6",
+        "residential-r3",
+        "residential-r4",
+        "residential-r5"
       ]
     }
   },
   "additional_assignments": {
-    "HUACHI": "residential-r3",
     "lirui-cdn": "residential-r5"
+  },
+  "google_r1_r2_failover_chain": [
+    "residential-r3",
+    "residential-r4",
+    "residential-r5",
+    "residential-r6"
+  ],
+  "payment_failover_chain": [
+    "residential-r3",
+    "residential-r4",
+    "residential-r5",
+    "residential-r6"
+  ],
+  "openai_user_overrides": {
+    "liulishuo": {
+      "domains": [
+        "domain:openai.com",
+        "domain:chatgpt.com",
+        "domain:oaistatic.com",
+        "domain:oaiusercontent.com",
+        "domain:chat.openai.com",
+        "domain:platform.openai.com",
+        "domain:api.openai.com"
+      ],
+      "outbound": "residential-r3",
+      "failover_chain": [
+        "residential-r3",
+        "residential-r4",
+        "residential-r5",
+        "residential-r6"
+      ]
+    }
   },
   "client_direct_domains": [
     "domain:alipay.com",
