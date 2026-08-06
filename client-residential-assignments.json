@@ -1,5 +1,5 @@
 {
-  "_updated": "2026-08-05",
+  "_updated": "2026-08-06",
   "_policy": "strict-residential-v1",
   "_comment": "Primary client assignment. Failover is limited to R3/R4/R5; VPS public fallback is forbidden for these rules.",
   "failover_order": [
@@ -14,7 +14,6 @@
         "xuyu",
         "yangheng",
         "yangjingzhou",
-        "panwanjing",
         "fanhailong",
         "liulishuo",
         "maoli",
