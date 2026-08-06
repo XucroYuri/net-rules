@@ -296,11 +296,12 @@ def assert_config(config, assignments, payment_domains):
         raise RuntimeError(f'R1/R2 Google route mismatch: {len(google_matches)}')
     overrides = read_json(POLICY).get('openai_user_overrides') or {}
     for user, override in overrides.items():
+        allowed_outbounds = set(override['failover_chain'])
         matches = [
             rule for rule in rules
             if rule.get('user') == [user]
             and set(rule.get('domain') or []) == set(override['domains'])
-            and rule.get('outboundTag') == override['outbound']
+            and rule.get('outboundTag') in allowed_outbounds
         ]
         if len(matches) != 1:
             raise RuntimeError(f'OpenAI override route mismatch for {user}: {len(matches)}')
