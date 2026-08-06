@@ -1,7 +1,6 @@
 {
-  "_updated": "2026-08-06",
-  "_arch": "STRICT RESIDENTIAL V1: per-client R3-R4-R5 with no VPS fallback",
-  "_policy_file": "client-residential-assignments.json",
+  "_updated": "20260806-115750",
+  "_arch": "STRICT RESIDENTIAL V2: six groups, payment, R1/R2 Google and liulishuo OpenAI on R3-R6",
   "GOOGLE_CLOUD_API_EXCEPTIONS": {
     "domains": [
       "domain:cloud.google.com",
@@ -20,58 +19,257 @@
     ],
     "outbound": "direct"
   },
-  "CLIENT_RESIDENTIAL": {
-    "residential-r3": {
-      "exit_ip": "38.100.67.138",
-      "members": [
-        "xuyu", "yangheng", "yangjingzhou", "fanhailong",
-        "liulishuo", "maoli", "siyue", "wangxiaoyu", "wenting", "xixi",
-        "yangyu", "yangzixian", "HUACHI"
+  "GOOGLE_R1_R2": {
+    "domains": [
+      "domain:google.com",
+      "domain:gstatic.com",
+      "domain:googleusercontent.com",
+      "domain:ai.google.dev",
+      "domain:google.dev",
+      "domain:youtube.com",
+      "domain:youtu.be",
+      "domain:ytimg.com",
+      "domain:googlevideo.com",
+      "domain:ggpht.com",
+      "domain:gemini.google.com",
+      "domain:bard.google.com",
+      "domain:aistudio.google.com",
+      "domain:makersuite.google.com",
+      "domain:alkalimakersuite-pa.clients6.google.com",
+      "domain:deepmind.google",
+      "domain:labs.google",
+      "domain:notebooklm.google",
+      "domain:workspace.google.com",
+      "domain:about.google",
+      "domain:blog.google",
+      "domain:withgoogle.com",
+      "domain:googleblog.com",
+      "domain:google.org",
+      "keyword:gemini"
+    ],
+    "members": [
+      "huangyuwan",
+      "hongge",
+      "zhoutingyun",
+      "daiyi",
+      "liqin",
+      "maoxinyi",
+      "yangheng",
+      "yangjingzhou",
+      "fanhailong",
+      "liulishuo",
+      "maoli",
+      "siyue",
+      "wangxiaoyu",
+      "wenting",
+      "xixi",
+      "yangyu",
+      "yangzixian"
+    ],
+    "outbound": "residential-r3",
+    "failover_chain": [
+      "residential-r3",
+      "residential-r4",
+      "residential-r5",
+      "residential-r6"
+    ]
+  },
+  "OPENAI_USER_OVERRIDES": {
+    "liulishuo": {
+      "domains": [
+        "domain:openai.com",
+        "domain:chatgpt.com",
+        "domain:oaistatic.com",
+        "domain:oaiusercontent.com",
+        "domain:chat.openai.com",
+        "domain:platform.openai.com",
+        "domain:api.openai.com"
       ],
       "outbound": "residential-r3",
-      "failover_chain": ["residential-r3", "residential-r4", "residential-r5"]
+      "failover_chain": [
+        "residential-r3",
+        "residential-r4",
+        "residential-r5",
+        "residential-r6"
+      ]
+    }
+  },
+  "CLIENT_RESIDENTIAL": {
+    "residential-r1": {
+      "members": [
+        "huangyuwan",
+        "hongge",
+        "zhoutingyun",
+        "daiyi",
+        "liqin",
+        "maoxinyi"
+      ],
+      "outbound": "residential-r1",
+      "failover_chain": [
+        "residential-r1",
+        "residential-r2",
+        "residential-r3",
+        "residential-r4",
+        "residential-r5",
+        "residential-r6"
+      ]
+    },
+    "residential-r2": {
+      "members": [
+        "yangheng",
+        "yangjingzhou",
+        "fanhailong",
+        "liulishuo",
+        "maoli",
+        "siyue",
+        "wangxiaoyu",
+        "wenting",
+        "xixi",
+        "yangyu",
+        "yangzixian"
+      ],
+      "outbound": "residential-r2",
+      "failover_chain": [
+        "residential-r2",
+        "residential-r1",
+        "residential-r3",
+        "residential-r4",
+        "residential-r5",
+        "residential-r6"
+      ]
+    },
+    "residential-r3": {
+      "members": [
+        "HUACHI"
+      ],
+      "outbound": "residential-r3",
+      "failover_chain": [
+        "residential-r3",
+        "residential-r4",
+        "residential-r5",
+        "residential-r6"
+      ]
     },
     "residential-r4": {
-      "exit_ip": "38.100.67.252",
       "members": [
-        "zhangzuoyin", "zhoutingyun", "sunhuan", "pengzhou", "daiyi",
-        "maoxinyi", "huangyuwan", "liqin", "chenfeng"
+        "zhangzuoyin",
+        "sunhuan",
+        "pengzhou",
+        "chenfeng"
       ],
       "outbound": "residential-r4",
-      "failover_chain": ["residential-r4", "residential-r5", "residential-r3"]
+      "failover_chain": [
+        "residential-r4",
+        "residential-r5",
+        "residential-r6",
+        "residential-r3"
+      ]
     },
     "residential-r5": {
-      "exit_ip": "38.100.67.131",
       "members": [
-        "hongge", "dou", "lirui", "liujun", "studio-admin", "wangbo",
-        "weiyuan", "lirui-cdn"
+        "dou",
+        "lirui",
+        "liujun",
+        "studio-admin",
+        "wangbo",
+        "weiyuan",
+        "lirui-cdn"
       ],
       "outbound": "residential-r5",
-      "failover_chain": ["residential-r5", "residential-r3", "residential-r4"]
+      "failover_chain": [
+        "residential-r5",
+        "residential-r6",
+        "residential-r3",
+        "residential-r4"
+      ]
+    },
+    "residential-r6": {
+      "members": [
+        "xuyu"
+      ],
+      "outbound": "residential-r6",
+      "failover_chain": [
+        "residential-r6",
+        "residential-r3",
+        "residential-r4",
+        "residential-r5"
+      ]
     }
   },
   "PAYMENT": {
-    "domains_file": "payment-domains.json",
+    "domains": [
+      "domain:stripe.com",
+      "domain:stripe.network",
+      "domain:stripecdn.com",
+      "domain:stripeassets.com",
+      "domain:paypal.com",
+      "domain:paypalobjects.com",
+      "domain:paypal.me",
+      "domain:braintreegateway.com",
+      "domain:braintree-api.com",
+      "domain:braintreepayments.com",
+      "domain:squareup.com",
+      "domain:square.link",
+      "domain:cash.app",
+      "domain:adyen.com",
+      "domain:checkout.com",
+      "domain:paddle.com",
+      "domain:paddlecdn.com",
+      "domain:chargebee.com",
+      "domain:recurly.com",
+      "domain:fastspring.com",
+      "domain:2checkout.com",
+      "domain:authorize.net",
+      "domain:cybersource.com",
+      "domain:worldpay.com",
+      "domain:globalpay.com",
+      "domain:paysafe.com",
+      "domain:payoneer.com",
+      "domain:wise.com",
+      "domain:klarna.com",
+      "domain:afterpay.com",
+      "domain:affirm.com",
+      "domain:zip.co",
+      "domain:venmo.com",
+      "domain:zellepay.com",
+      "domain:googlepay.com",
+      "domain:pay.google.com",
+      "domain:payments.google.com",
+      "domain:wallet.google.com",
+      "domain:applepay.cdn-apple.com",
+      "domain:apple-pay-gateway.apple.com",
+      "domain:amazonpay.com",
+      "domain:coinbase.com",
+      "domain:coinbasecommerce.com",
+      "domain:bitpay.com",
+      "domain:crypto.com",
+      "domain:moonpay.com",
+      "domain:ramp.network",
+      "domain:transak.com",
+      "domain:mercuryo.io",
+      "domain:nowpayments.io"
+    ],
     "excluded_client_direct_domains": [
       "domain:alipay.com",
       "domain:alipayobjects.com",
       "domain:pay.weixin.qq.com",
       "domain:tenpay.com"
     ],
-    "outbound": "per-client-assignment",
-    "failover_chain": ["residential-r3", "residential-r4", "residential-r5"]
+    "outbound": "residential-r3",
+    "failover_chain": [
+      "residential-r3",
+      "residential-r4",
+      "residential-r5",
+      "residential-r6"
+    ]
   },
   "DEFAULT_UNASSIGNED": {
     "outbound": "residential-r3",
-    "failover_chain": ["residential-r3", "residential-r4", "residential-r5"]
-  },
-  "validation": {
-    "active_clients_must_be_mapped": true,
-    "forbidden_client_fallbacks": [
-      "residential-r1",
-      "residential-r2",
-      "fallback-la",
-      "fallback-bwh"
+    "failover_chain": [
+      "residential-r3",
+      "residential-r4",
+      "residential-r5",
+      "residential-r6"
     ]
   }
 }
