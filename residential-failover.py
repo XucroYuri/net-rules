@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""
-住宅 IP 自动故障切换。
-严格 client 分组只使用 R3 -> R4 -> R5；三条住宅线路都不可用时保持失败。
-"""
-import json, sqlite3, shutil, subprocess, sys, os, tempfile, time
+import json
+import os
+import shutil
+import sqlite3
+import subprocess
+import sys
+import tempfile
+import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, cast
 
 CONFIG = '/usr/local/x-ui/bin/config.json'
 DB = '/etc/x-ui/x-ui.db'
@@ -17,18 +20,41 @@ POLICY_FILE = os.environ.get(
     'CLIENT_RESIDENTIAL_POLICY_FILE',
     '/etc/x-ui/client-residential-assignments.json',
 )
+PAYMENT_DOMAINS_FILE = os.environ.get('PAYMENT_DOMAINS_FILE', '/etc/x-ui/payment-domains.json')
+SOCKS_ENV = os.environ.get('RESIDENTIAL_SOCKS_ENV', '/etc/x-ui/residential-socks.env')
 FAIL_THRESHOLD = 3
 RECOVERY_THRESHOLD = 5
 PROBE_TIMEOUT = 8
 PROBE_URL = 'https://api.ipify.org'
-SOCKS_ENV = os.environ.get('RESIDENTIAL_SOCKS_ENV', '/etc/x-ui/residential-socks.env')
+DRY_RUN = '--dry-run' in sys.argv
+
+RESIDENTIAL_TAGS = (
+    'residential-r1', 'residential-r2', 'residential-r3',
+    'residential-r4', 'residential-r5', 'residential-r6',
+)
+SAFE_TAGS = ('residential-r3', 'residential-r4', 'residential-r5', 'residential-r6')
+R1_R2_TAGS = ('residential-r1', 'residential-r2')
+R1_PUBLIC_IP = os.environ.get('R1_PUBLIC_IP', '192.204.62.110')
+R2_PUBLIC_IP = os.environ.get('R2_PUBLIC_IP', '38.150.34.205')
+
+GOOGLE_WEB_DOMAINS = [
+    'domain:google.com', 'domain:gstatic.com', 'domain:googleusercontent.com',
+    'domain:ai.google.dev', 'domain:google.dev', 'domain:youtube.com',
+    'domain:youtu.be', 'domain:ytimg.com', 'domain:googlevideo.com',
+    'domain:ggpht.com', 'domain:gemini.google.com', 'domain:bard.google.com',
+    'domain:aistudio.google.com', 'domain:makersuite.google.com',
+    'domain:alkalimakersuite-pa.clients6.google.com', 'domain:deepmind.google',
+    'domain:labs.google', 'domain:notebooklm.google', 'domain:workspace.google.com',
+    'domain:about.google', 'domain:blog.google', 'domain:withgoogle.com',
+    'domain:googleblog.com', 'domain:google.org', 'keyword:gemini',
+]
 
 
 def load_env_file(path=SOCKS_ENV):
     if not os.path.exists(path):
         return
-    with open(path) as f:
-        for raw in f:
+    with open(path) as handle:
+        for raw in handle:
             line = raw.strip()
             if not line or line.startswith('#') or '=' not in line:
                 continue
@@ -36,343 +62,342 @@ def load_env_file(path=SOCKS_ENV):
             os.environ.setdefault(key.strip(), value.strip())
 
 
-load_env_file()
-
-LA_PUBLIC_IP = os.environ.get('LA_PUBLIC_IP', '64.186.226.51')
-BWH_PUBLIC_IP = os.environ.get('BWH_PUBLIC_IP', '174.137.51.201')
-R1_PUBLIC_IP = os.environ.get('R1_PUBLIC_IP', '192.204.62.110')
-R2_PUBLIC_IP = os.environ.get('R2_PUBLIC_IP', '38.150.34.205')
-FALLBACK_WG_LA_IP = os.environ.get('FALLBACK_WG_LA_IP', '10.10.18.1')
-FALLBACK_WG_BWH_IP = os.environ.get('FALLBACK_WG_BWH_IP', '10.10.18.2')
+def load_payment_domains():
+    with open(PAYMENT_DOMAINS_FILE) as handle:
+        domains = json.load(handle)
+    if not isinstance(domains, list) or len(domains) != 50:
+        raise RuntimeError('payment domain list must contain 50 entries')
+    return domains
 
 
-def detect_node():
-    configured = os.environ.get('NODE_ROLE', '').upper()
-    if configured in {'LA', 'BWH'}:
-        return configured
-    result = subprocess.run(['ip', '-4', '-o', 'addr', 'show'], capture_output=True, text=True)
-    if LA_PUBLIC_IP in result.stdout:
-        return 'LA'
-    if BWH_PUBLIC_IP in result.stdout:
-        return 'BWH'
-    raise RuntimeError('unable to detect NODE_ROLE for VPS fallback')
-
-
-NODE = detect_node()
-
-WG = {
-    'r1': {'iface':'wg0', 'expected_ip':R1_PUBLIC_IP},
-    'r2': {'iface':'wg1', 'expected_ip':R2_PUBLIC_IP},
-}
-
-STRICT_RESIDENTIAL_CHAIN = ['residential-r3', 'residential-r4', 'residential-r5']
-
-
-def load_assignment_groups():
+def load_policy():
     with open(POLICY_FILE) as handle:
         policy = json.load(handle)
-    if policy.get('failover_order') != STRICT_RESIDENTIAL_CHAIN:
-        raise RuntimeError('strict failover policy must be R3/R4/R5')
-    groups = policy.get('groups') or {}
-    if set(groups) != set(STRICT_RESIDENTIAL_CHAIN):
-        raise RuntimeError('strict failover groups are incomplete')
-    members_by_group = {}
-    assigned = set()
-    for outbound in STRICT_RESIDENTIAL_CHAIN:
+    order = tuple(policy.get('failover_order') or ())
+    groups = cast(dict[str, Any], policy.get('groups') or {})
+    if order != RESIDENTIAL_TAGS or set(groups) != set(RESIDENTIAL_TAGS):
+        raise RuntimeError('six-group policy is incomplete')
+    members_by_group: dict[str, list[str]] = {}
+    assigned: dict[str, str] = {}
+    chains: dict[str, list[str]] = {}
+    for outbound in RESIDENTIAL_TAGS:
         members = list(groups[outbound].get('members') or [])
-        for member, target in (policy.get('additional_assignments') or {}).items():
-            if target == outbound:
-                members.append(member)
+        chain_value = groups[outbound].get('failover_chain')
         if not members or len(members) != len(set(members)):
             raise RuntimeError(f'invalid members for {outbound}')
-        if assigned.intersection(members):
-            raise RuntimeError('client appears in multiple strict groups')
-        assigned.update(members)
+        if not isinstance(chain_value, list) or not chain_value or any(
+            tag not in RESIDENTIAL_TAGS for tag in chain_value
+        ):
+            raise RuntimeError(f'invalid failover chain for {outbound}')
+        chain = cast(list[str], chain_value)
         members_by_group[outbound] = members
-    return members_by_group
+        chains[outbound] = list(chain)
+        for member in members:
+            if member in assigned:
+                raise RuntimeError(f'duplicate client assignment: {member}')
+            assigned[member] = outbound
+    additional = cast(dict[str, str], policy.get('additional_assignments') or {})
+    for member, outbound in additional.items():
+        if outbound not in RESIDENTIAL_TAGS or member in assigned:
+            raise RuntimeError(f'invalid additional assignment: {member}')
+        members_by_group[outbound].append(member)
+        assigned[member] = outbound
+    google_chain = tuple(cast(list[str], policy.get('google_r1_r2_failover_chain') or []))
+    payment_chain = tuple(cast(list[str], policy.get('payment_failover_chain') or []))
+    if google_chain != SAFE_TAGS or payment_chain != SAFE_TAGS:
+        raise RuntimeError('Google/payment failover must be R3/R4/R5/R6 only')
+    overrides = cast(dict[str, dict[str, Any]], policy.get('openai_user_overrides') or {})
+    for user, override in overrides.items():
+        if user not in assigned:
+            raise RuntimeError(f'OpenAI override user is not assigned: {user}')
+        domains = override.get('domains')
+        outbound = override.get('outbound')
+        chain_value = override.get('failover_chain')
+        if not isinstance(chain_value, list):
+            raise RuntimeError(f'invalid OpenAI override chain: {user}')
+        chain = tuple(cast(list[str], chain_value))
+        if (not isinstance(domains, list) or not domains
+                or any(not isinstance(domain, str) for domain in domains)):
+            raise RuntimeError(f'invalid OpenAI override domains: {user}')
+        if outbound not in SAFE_TAGS or not chain or not set(chain).issubset(SAFE_TAGS):
+            raise RuntimeError(f'OpenAI override must use R3/R4/R5/R6: {user}')
+        if chain[0] != outbound:
+            raise RuntimeError(f'OpenAI override chain must start with outbound: {user}')
+    return policy, members_by_group, assigned, chains, list(google_chain), list(payment_chain), overrides
 
 
-GROUP_MEMBERS = load_assignment_groups()
-
-
-def group_candidates(primary):
-    return [primary] + [candidate for candidate in STRICT_RESIDENTIAL_CHAIN if candidate != primary]
-
-
-GROUPS = {
-    f'CLIENT_{outbound.rsplit("-", 1)[-1].upper()}': {
-        'type': 'user',
-        'members': GROUP_MEMBERS[outbound],
-        'primary': outbound,
-        'candidates': group_candidates(outbound),
-    }
-    for outbound in STRICT_RESIDENTIAL_CHAIN
+load_env_file()
+POLICY, GROUP_MEMBERS, ASSIGNED_USERS, GROUP_CHAINS, GOOGLE_CHAIN, PAYMENT_CHAIN, OPENAI_USER_OVERRIDES = load_policy()
+PAYMENT_DOMAINS = load_payment_domains()
+NODE = os.environ.get('NODE_ROLE', 'unknown').upper()
+WG = {
+    'r1': {'iface': 'wg0', 'expected_ip': R1_PUBLIC_IP},
+    'r2': {'iface': 'wg1', 'expected_ip': R2_PUBLIC_IP},
 }
-
-RESOURCE_KEYS = ('r1','r2','r3','r4','r5','la','bwh')
-
-FALLBACK_PROBES = {
-    'LA': {
-        'la': {'interface': 'eth0', 'expected_ip': LA_PUBLIC_IP},
-        'bwh': {'interface': FALLBACK_WG_LA_IP, 'expected_ip': BWH_PUBLIC_IP},
-    },
-    'BWH': {
-        'la': {'interface': FALLBACK_WG_BWH_IP, 'expected_ip': LA_PUBLIC_IP},
-        'bwh': {'interface': 'eth0', 'expected_ip': BWH_PUBLIC_IP},
-    },
-}
+RESOURCE_KEYS = ('r1', 'r2', 'r3', 'r4', 'r5', 'r6')
 
 
-def load_commute_state():
-    commute_file = '/etc/x-ui/commute-state.json'
-    if os.path.exists(commute_file):
-        try:
-            import json
-            with open(commute_file) as f:
-                state = json.load(f)
-                return state.get('is_swapped', False)
-        except: pass
-    return False
-
-dry_run = '--dry-run' in sys.argv
-
-
-def log(msg):
-    ts = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
-    line = f'[{ts}] {msg}'
+def log(message):
+    stamp = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    line = f'[{stamp}] {message}'
     print(line)
     try:
-        with open(LOG_FILE,'a') as f: f.write(line+'\n')
-    except: pass
+        with open(LOG_FILE, 'a') as handle:
+            handle.write(line + '\n')
+    except OSError:
+        pass
 
 
 def probe_wireguard(key):
-    iface = WG[key]['iface']
-    expected_ip = WG[key]['expected_ip']
+    setting = WG[key]
     try:
-        r = subprocess.run(['curl','-4','-s','--max-time',str(PROBE_TIMEOUT),'--interface',iface,PROBE_URL],
-                           capture_output=True,text=True,timeout=PROBE_TIMEOUT+2)
-        ip = r.stdout.strip()
-        return ip == expected_ip, f'{key} via {iface} -> {ip or "empty"}'
-    except Exception as e:
-        return False, f'{key} via {iface} -> {str(e)[:60]}'
+        result = subprocess.run([
+            'curl', '-4', '-s', '--max-time', str(PROBE_TIMEOUT),
+            '--interface', setting['iface'], PROBE_URL,
+        ], capture_output=True, text=True, timeout=PROBE_TIMEOUT + 2)
+        actual = result.stdout.strip()
+        return actual == setting['expected_ip'], f'{key} via {setting["iface"]} -> {actual or "empty"}'
+    except Exception as error:
+        return False, f'{key} via {setting["iface"]} -> {str(error)[:80]}'
 
 
 def probe_socks(key):
     prefix = 'LYCHEE_' + key.upper()
     host = os.environ.get(prefix + '_HOST') or os.environ.get(prefix + '_PUBLIC_IP')
-    expected_ip = os.environ.get(prefix + '_PUBLIC_IP') or host
+    expected = os.environ.get(prefix + '_PUBLIC_IP') or host
     port = os.environ.get(prefix + '_PORT')
     user = os.environ.get(prefix + '_USERNAME')
     password = os.environ.get(prefix + '_PASSWORD')
-    if not all([host, expected_ip, port, user, password]):
+    if not all((host, expected, port, user, password)):
         return False, f'{key} SOCKS5 -> credentials missing'
     try:
         result = subprocess.run([
-            'curl','-4','--fail','--silent','--show-error','--max-time',str(PROBE_TIMEOUT),
-            '--socks5-hostname',f'{host}:{port}','--proxy-user',f'{user}:{password}',PROBE_URL,
+            'curl', '-4', '--fail', '--silent', '--show-error',
+            '--max-time', str(PROBE_TIMEOUT), '--socks5-hostname', f'{host}:{port}',
+            '--proxy-user', f'{user}:{password}', PROBE_URL,
         ], capture_output=True, text=True, timeout=PROBE_TIMEOUT + 2)
-        actual_ip = result.stdout.strip()
-        ok = result.returncode == 0 and actual_ip == expected_ip
-        return ok, f'{key} SOCKS5 -> {actual_ip or "empty"}'
-    except Exception as e:
-        return False, f'{key} SOCKS5 -> {str(e)[:60]}'
-
-
-def probe_fallback(key):
-    settings = FALLBACK_PROBES[NODE][key]
-    interface = settings['interface']
-    expected_ip = settings['expected_ip']
-    try:
-        result = subprocess.run([
-            'curl','-4','--fail','--silent','--show-error','--max-time',str(PROBE_TIMEOUT),
-            '--interface',interface,PROBE_URL,
-        ], capture_output=True, text=True, timeout=PROBE_TIMEOUT + 2)
-        actual_ip = result.stdout.strip()
-        ok = result.returncode == 0 and actual_ip == expected_ip
-        return ok, f'{key} via {interface} -> {actual_ip or "empty"}'
+        actual = result.stdout.strip()
+        return result.returncode == 0 and actual == expected, f'{key} SOCKS5 -> {actual or "empty"}'
     except Exception as error:
-        return False, f'{key} via {interface} -> {str(error)[:60]}'
+        return False, f'{key} SOCKS5 -> {str(error)[:80]}'
 
 
 def probe(key):
-    if key in WG:
-        return probe_wireguard(key)
-    if key in {'la', 'bwh'}:
-        return probe_fallback(key)
-    return probe_socks(key)
+    return probe_wireguard(key) if key in WG else probe_socks(key)
+
+
+def group_descriptor(name: str, members: list[str], candidates: list[str], domains=None) -> dict[str, Any]:
+    return {
+        'name': name,
+        'members': list(members),
+        'domains': list(domains or []),
+        'candidates': list(candidates),
+    }
+
+
+def build_groups() -> dict[str, dict[str, Any]]:
+    groups = {
+        f'CLIENT_{outbound.rsplit("-", 1)[-1].upper()}': group_descriptor(
+            f'CLIENT_{outbound.rsplit("-", 1)[-1].upper()}',
+            GROUP_MEMBERS[outbound],
+            GROUP_CHAINS[outbound],
+        )
+        for outbound in RESIDENTIAL_TAGS
+    }
+    groups['GOOGLE_R1_R2'] = group_descriptor(
+        'GOOGLE_R1_R2',
+        GROUP_MEMBERS['residential-r1'] + GROUP_MEMBERS['residential-r2'],
+        GOOGLE_CHAIN,
+        GOOGLE_WEB_DOMAINS,
+    )
+    for user, override in OPENAI_USER_OVERRIDES.items():
+        groups['OPENAI_' + user.upper().replace('-', '_')] = group_descriptor(
+            'OPENAI_' + user.upper().replace('-', '_'),
+            [user],
+            list(override['failover_chain']),
+            override['domains'],
+        )
+    groups['PAYMENT'] = group_descriptor('PAYMENT', [], PAYMENT_CHAIN, PAYMENT_DOMAINS)
+    return groups
+
+
+GROUPS = build_groups()
 
 
 def load_state() -> dict[str, Any]:
     if os.path.exists(STATE_FILE):
-        with open(STATE_FILE) as f: return json.load(f)
+        with open(STATE_FILE) as handle:
+            return json.load(handle)
     return {
         '_updated': datetime.now(timezone.utc).isoformat(),
-        'r1': {'fail_count':0,'success_count':0,'healthy':True},
-        'r2': {'fail_count':0,'success_count':0,'healthy':True},
-        'outbounds': {g: d['candidates'][0] for g,d in GROUPS.items()},
+        'outbounds': {name: data['candidates'][0] for name, data in GROUPS.items()},
         'switch_history': [],
     }
 
 
-def save_state(s: dict[str, Any]):
-    s['_updated'] = datetime.now(timezone.utc).isoformat()
-    os.makedirs(os.path.dirname(STATE_FILE),exist_ok=True)
-    with open(STATE_FILE,'w') as f: json.dump(s,f,indent=2)
-
-
 def ensure_state_shape(state: dict[str, Any]) -> dict[str, Any]:
     for key in RESOURCE_KEYS:
-        state.setdefault(key, {'fail_count':0,'success_count':0,'healthy':False})
+        state.setdefault(key, {'fail_count': 0, 'success_count': 0, 'healthy': True})
     state.setdefault('outbounds', {})
     state.setdefault('switch_history', [])
     return state
 
 
-def find_rule(rules, gd):
-    for i,r in enumerate(rules):
-        if gd['type'] == 'user':
-            u = set(r.get('user') or [])
-            if set(gd['members']).issubset(u) and not r.get('domain'):
-                return i,r
-    return None,None
+def find_rule(rules, descriptor):
+    expected_users = set(descriptor['members'])
+    expected_domains = set(descriptor['domains'])
+    for index, rule in enumerate(rules):
+        actual_users = set(rule.get('user') or [])
+        actual_domains = set(rule.get('domain') or [])
+        if actual_users == expected_users and actual_domains == expected_domains:
+            return index, rule
+    return None, None
 
 
-def change_outbound(cfg, gid, gd, new_ob):
-    rules = cfg.get('routing',{}).get('rules',[])
-    idx,rule = find_rule(rules, gd)
-    if rule is None:
-        log(f'  WARN: {gid} rule not found')
-        return False
-    old = rule.get('outboundTag')
-    if old == new_ob: return False
-    rule['outboundTag'] = new_ob
-    log(f'  rule[{idx}] {gid}: {old} -> {new_ob}')
-    return True
-
-
-def current_outbound(cfg, gd):
-    _, rule = find_rule(cfg.get('routing',{}).get('rules',[]), gd)
+def current_outbound(cfg, descriptor):
+    _, rule = find_rule(cfg.get('routing', {}).get('rules', []), descriptor)
     return rule.get('outboundTag') if rule else None
 
 
+def change_outbound(cfg, descriptor, new_outbound):
+    rules = cfg.get('routing', {}).get('rules', [])
+    index, rule = find_rule(rules, descriptor)
+    if rule is None:
+        log(f'WARN: {descriptor["name"]} rule not found')
+        return False
+    old = rule.get('outboundTag')
+    if old == new_outbound:
+        return False
+    rule['outboundTag'] = new_outbound
+    log(f'rule[{index}] {descriptor["name"]}: {old} -> {new_outbound}')
+    return True
+
+
 def do_switches(switches):
-    for gid, _, from_ob, to_ob, reason in switches:
-        log(f'SWITCH: {gid} {from_ob}->{to_ob} ({reason})')
-    if dry_run:
+    for descriptor, old, new, reason in switches:
+        log(f'SWITCH: {descriptor["name"]} {old}->{new} ({reason})')
+    if DRY_RUN:
         return True
-    ts = datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')
-    db_backup = f'{DB}.bak-fo-{ts}'
+    stamp = datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')
+    db_backup = f'{DB}.bak-fo-v2-{stamp}'
+    config_backup = f'{CONFIG}.bak-fo-v2-{stamp}'
     shutil.copy2(DB, db_backup)
-    conn = None
-    preview_path = None
+    shutil.copy2(CONFIG, config_backup)
+    connection = None
+    preview = None
     try:
-        with open(CONFIG) as f:
-            cfg = json.load(f)
-        outbound_tags = {item.get('tag') for item in cfg.get('outbounds',[])}
-        for gid, gd, _, to_ob, _ in switches:
-            if to_ob not in outbound_tags:
-                raise RuntimeError(f'outbound not found: {to_ob}')
-            if not change_outbound(cfg, gid, gd, to_ob):
-                raise RuntimeError(f'rule not changed: {gid}')
+        with open(CONFIG) as handle:
+            cfg = json.load(handle)
+        outbound_tags = {item.get('tag') for item in cfg.get('outbounds', [])}
+        for descriptor, _, new, _ in switches:
+            if new not in outbound_tags:
+                raise RuntimeError(f'outbound not found: {new}')
+            if not change_outbound(cfg, descriptor, new):
+                raise RuntimeError(f'rule not changed: {descriptor["name"]}')
         with tempfile.NamedTemporaryFile(
-            mode='w', suffix='.json', prefix='xray-failover-', dir=os.path.dirname(CONFIG), delete=False
-        ) as preview:
-            json.dump(cfg, preview, indent=2)
-            preview_path = preview.name
-        result = subprocess.run([XRAY,'run','-test','-c',preview_path],capture_output=True,text=True)
+            mode='w', suffix='.json', prefix='xray-failover-v2-',
+            dir=os.path.dirname(CONFIG), delete=False,
+        ) as handle:
+            json.dump(cfg, handle, indent=2)
+            preview = handle.name
+        result = subprocess.run([XRAY, 'run', '-test', '-c', preview], capture_output=True, text=True)
         if result.returncode != 0:
-            raise RuntimeError('xray config test failed')
-        conn = sqlite3.connect(DB)
-        row = conn.execute("SELECT value FROM settings WHERE key='xrayTemplateConfig'").fetchone()
+            raise RuntimeError((result.stderr or result.stdout)[-1200:])
+        connection = sqlite3.connect(DB)
+        row = connection.execute(
+            "SELECT value FROM settings WHERE key='xrayTemplateConfig'"
+        ).fetchone()
         if not row or not row[0]:
             raise RuntimeError('xrayTemplateConfig not found')
         template = json.loads(row[0])
-        for gid, gd, _, to_ob, _ in switches:
-            if not change_outbound(template, gid, gd, to_ob):
-                raise RuntimeError(f'template rule not changed: {gid}')
-        conn.execute("UPDATE settings SET value=? WHERE key='xrayTemplateConfig'",(json.dumps(template,indent=2),))
-        conn.commit()
-        conn.close()
-        conn = None
-        restart = subprocess.run(['x-ui','restart'],capture_output=True,text=True,timeout=45)
+        for descriptor, _, new, _ in switches:
+            if not change_outbound(template, descriptor, new):
+                raise RuntimeError(f'template rule not changed: {descriptor["name"]}')
+        connection.execute(
+            "UPDATE settings SET value=? WHERE key='xrayTemplateConfig'",
+            (json.dumps(template, indent=2),),
+        )
+        connection.commit()
+        connection.close()
+        connection = None
+        restart = subprocess.run(['x-ui', 'restart'], capture_output=True, text=True, timeout=45)
         if restart.returncode != 0:
-            raise RuntimeError('x-ui restart failed')
+            raise RuntimeError((restart.stderr or restart.stdout)[-1200:])
         time.sleep(3)
-        process = subprocess.run(['pgrep','-f','xray-linux-amd64'],capture_output=True,text=True)
-        if not process.stdout.strip():
+        if not subprocess.run(['pgrep', '-f', 'xray-linux-amd64'], capture_output=True, text=True).stdout.strip():
             raise RuntimeError('xray process missing after restart')
-        with open(CONFIG) as f:
-            live = json.load(f)
-        for gid, gd, _, to_ob, _ in switches:
-            if current_outbound(live, gd) != to_ob:
-                raise RuntimeError(f'generated config did not persist switch: {gid}')
+        with open(CONFIG) as handle:
+            live = json.load(handle)
+        for descriptor, _, new, _ in switches:
+            if current_outbound(live, descriptor) != new:
+                raise RuntimeError(f'generated config did not persist {descriptor["name"]}')
     except Exception as error:
-        log(f'  ERROR rollback: {error}')
-        if conn is not None:
-            conn.close()
-        shutil.copy2(db_backup,DB)
-        subprocess.run(['x-ui','restart'],capture_output=True,timeout=45)
+        log(f'ERROR rollback: {error}')
+        if connection is not None:
+            connection.close()
+        shutil.copy2(db_backup, DB)
+        shutil.copy2(config_backup, CONFIG)
+        subprocess.run(['x-ui', 'restart'], capture_output=True, timeout=45)
         return False
     finally:
-        if preview_path and os.path.exists(preview_path):
-            os.unlink(preview_path)
-    log(f'  DONE: {len(switches)} groups switched with one restart')
+        if preview and os.path.exists(preview):
+            os.unlink(preview)
+    log(f'DONE: {len(switches)} route categories switched')
     return True
 
 
 def main():
-    log(f'=== Check (node={NODE} dry_run={dry_run}) ===')
+    log(f'=== Check V2 (node={NODE} dry_run={DRY_RUN}) ===')
     state = ensure_state_shape(load_state())
-
     with ThreadPoolExecutor(max_workers=len(RESOURCE_KEYS)) as executor:
         probe_results = dict(zip(RESOURCE_KEYS, executor.map(probe, RESOURCE_KEYS)))
-
     for key in RESOURCE_KEYS:
-        ok, detail = probe_results[key]
-        log(f'  {detail}')
-        s = state[key]
-        s['fail_count'] = 0 if ok else s['fail_count']+1
-        s['success_count'] = s['success_count']+1 if ok else 0
-        was = s['healthy']
-        if s['fail_count'] >= FAIL_THRESHOLD: s['healthy'] = False
-        if s['success_count'] >= RECOVERY_THRESHOLD: s['healthy'] = True
-        if was != s['healthy']:
-            log(f'  {key.upper()} {was}->{s["healthy"]} (f={s["fail_count"]} s={s["success_count"]})')
+        healthy, detail = probe_results[key]
+        log(detail)
+        resource = cast(dict[str, Any], state[key])
+        resource['fail_count'] = 0 if healthy else resource['fail_count'] + 1
+        resource['success_count'] = resource['success_count'] + 1 if healthy else 0
+        was_healthy = resource['healthy']
+        if resource['fail_count'] >= FAIL_THRESHOLD:
+            resource['healthy'] = False
+        if resource['success_count'] >= RECOVERY_THRESHOLD:
+            resource['healthy'] = True
+        if was_healthy != resource['healthy']:
+            log(f'{key.upper()} {was_healthy}->{resource["healthy"]}')
 
-    with open(CONFIG) as f:
-        cfg = json.load(f)
+    with open(CONFIG) as handle:
+        cfg = json.load(handle)
     switches = []
-    for gid, gd in GROUPS.items():
-        current = current_outbound(cfg, gd)
+    for name, descriptor in GROUPS.items():
+        current = current_outbound(cfg, descriptor)
         if current:
-            state['outbounds'][gid] = current
-        target = next((candidate for candidate in gd['candidates']
-                       if state[candidate.rsplit('-',1)[-1]]['healthy']), None)
+            state['outbounds'][name] = current
+        target = next((candidate for candidate in descriptor['candidates']
+                       if state[candidate.rsplit('-', 1)[-1]]['healthy']), None)
         if not target:
-            log(f'  WARN: {gid} has no healthy candidate; keeping {current}')
+            log(f'WARN: {name} has no healthy residential candidate; keeping {current}')
             continue
         if current == target:
             continue
-        reason = 'preferred healthy chain: ' + ' -> '.join(gd['candidates'])
-        switches.append((gid, gd, current, target, reason))
+        reason = 'preferred residential chain: ' + ' -> '.join(descriptor['candidates'])
+        switches.append((descriptor, current, target, reason))
 
     if switches and do_switches(switches):
-        for gid, _, current, target, reason in switches:
-            state['outbounds'][gid] = target
+        for descriptor, current, target, reason in switches:
+            state['outbounds'][descriptor['name']] = target
             state['switch_history'].append({
-                'time':datetime.now(timezone.utc).isoformat(),
-                'group':gid,'from':current,'to':target,'reason':reason,
+                'time': datetime.now(timezone.utc).isoformat(),
+                'group': descriptor['name'], 'from': current, 'to': target, 'reason': reason,
             })
-        state['switch_history'] = state['switch_history'][-20:]
+        state['switch_history'] = state['switch_history'][-30:]
+    if not DRY_RUN:
+        state['_updated'] = datetime.now(timezone.utc).isoformat()
+        with open(STATE_FILE, 'w') as handle:
+            json.dump(state, handle, indent=2)
+    log('=== Done. ' + ' '.join(
+        f'{name}={state["outbounds"].get(name, "?")}' for name in GROUPS
+    ) + ' ===')
 
-    if not dry_run:
-        save_state(state)
-    obs = state.get('outbounds',{})
-    parts = []
-    for g in GROUPS:
-        parts.append(g + '=' + obs.get(g, '?'))
-    log('=== Done. ' + ' '.join(parts) + ' ===')
 
-
-if __name__ == '__main__': main()
+if __name__ == '__main__':
+    main()
