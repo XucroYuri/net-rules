@@ -1,6 +1,6 @@
 {
   "_updated": "20260806-115750",
-  "_arch": "STRICT RESIDENTIAL V2: six groups, payment, R1/R2 Google and liulishuo OpenAI on R3-R6",
+  "_arch": "STRICT RESIDENTIAL V2: six groups, payment, R1/R2 Google and liulishuo OpenAI R6 canary with R3-R5 failover",
   "GOOGLE_CLOUD_API_EXCEPTIONS": {
     "domains": [
       "domain:cloud.google.com",
@@ -85,12 +85,12 @@
         "domain:platform.openai.com",
         "domain:api.openai.com"
       ],
-      "outbound": "residential-r3",
+      "outbound": "residential-r6",
       "failover_chain": [
+        "residential-r6",
         "residential-r3",
         "residential-r4",
-        "residential-r5",
-        "residential-r6"
+        "residential-r5"
       ]
     }
   },

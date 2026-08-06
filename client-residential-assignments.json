@@ -137,12 +137,12 @@
         "domain:platform.openai.com",
         "domain:api.openai.com"
       ],
-      "outbound": "residential-r3",
+      "outbound": "residential-r6",
       "failover_chain": [
+        "residential-r6",
         "residential-r3",
         "residential-r4",
-        "residential-r5",
-        "residential-r6"
+        "residential-r5"
       ]
     }
   },
