@@ -1,5 +1,5 @@
 {
-  "_updated": "2026-08-05",
+  "_updated": "2026-08-06",
   "_arch": "STRICT RESIDENTIAL V1: per-client R3-R4-R5 with no VPS fallback",
   "_policy_file": "client-residential-assignments.json",
   "GOOGLE_CLOUD_API_EXCEPTIONS": {
@@ -24,7 +24,7 @@
     "residential-r3": {
       "exit_ip": "38.100.67.138",
       "members": [
-        "xuyu", "yangheng", "yangjingzhou", "panwanjing", "fanhailong",
+        "xuyu", "yangheng", "yangjingzhou", "fanhailong",
         "liulishuo", "maoli", "siyue", "wangxiaoyu", "wenting", "xixi",
         "yangyu", "yangzixian", "HUACHI"
       ],
