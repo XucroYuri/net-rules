@@ -1,7 +1,7 @@
 {
   "_updated": "2026-08-06",
   "_policy": "strict-residential-v2",
-  "_comment": "Mapped clients use the assigned residential group. Payment, R1/R2 Google web traffic, and liulishuo OpenAI/ChatGPT traffic use safe residential overrides. VPS fallback outbounds are infrastructure-only and must never appear in client rules.",
+  "_comment": "Mapped clients use the assigned residential group. Payment, R1/R2 Google web traffic, and liulishuo OpenAI/ChatGPT traffic use safe residential overrides. GitHub API uses the current VPS directly, then R2 residential fallback. Other VPS fallback outbounds remain infrastructure-only.",
   "failover_order": [
     "residential-r1",
     "residential-r2",
@@ -146,6 +146,13 @@
       ]
     }
   },
+  "github_api_domains": [
+    "domain:api.github.com"
+  ],
+  "github_api_failover_chain": [
+    "direct",
+    "residential-r2"
+  ],
   "client_direct_domains": [
     "domain:alipay.com",
     "domain:alipayobjects.com",
@@ -165,6 +172,7 @@
     "domain:appspot.com",
     "domain:cloudfunctions.net",
     "domain:firebaseio.com",
-    "domain:firebaseapp.com"
+    "domain:firebaseapp.com",
+    "domain:api.github.com"
   ]
 }

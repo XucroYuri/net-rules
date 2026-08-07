@@ -34,6 +34,14 @@ RESIDENTIAL_TAGS = (
 )
 SAFE_TAGS = ('residential-r3', 'residential-r4', 'residential-r5', 'residential-r6')
 R1_R2_TAGS = ('residential-r1', 'residential-r2')
+GITHUB_API_DOMAINS = ['domain:api.github.com']
+GITHUB_API_CHAIN = ('direct', 'residential-r2')
+GITHUB_PROBE_KEYS = ('github-direct', 'github-r2')
+GITHUB_PROBE_INTERVAL = 300
+GITHUB_API_PROBE_URL = os.environ.get(
+    'GITHUB_API_PROBE_URL',
+    'https://api.github.com/repos/XucroYuri/net-rules/git/trees/main?recursive=1',
+)
 R1_PUBLIC_IP = os.environ.get('R1_PUBLIC_IP', '192.204.62.110')
 R2_PUBLIC_IP = os.environ.get('R2_PUBLIC_IP', '38.150.34.205')
 
@@ -106,6 +114,10 @@ def load_policy():
     payment_chain = tuple(cast(list[str], policy.get('payment_failover_chain') or []))
     if google_chain != SAFE_TAGS or payment_chain != SAFE_TAGS:
         raise RuntimeError('Google/payment failover must be R3/R4/R5/R6 only')
+    github_domains = list(policy.get('github_api_domains') or [])
+    github_chain = tuple(cast(list[str], policy.get('github_api_failover_chain') or []))
+    if github_domains != GITHUB_API_DOMAINS or github_chain != GITHUB_API_CHAIN:
+        raise RuntimeError('GitHub API failover must be direct VPS -> residential-r2')
     overrides = cast(dict[str, dict[str, Any]], policy.get('openai_user_overrides') or {})
     for user, override in overrides.items():
         if user not in assigned:
@@ -123,18 +135,24 @@ def load_policy():
             raise RuntimeError(f'OpenAI override must use R3/R4/R5/R6: {user}')
         if chain[0] != outbound:
             raise RuntimeError(f'OpenAI override chain must start with outbound: {user}')
-    return policy, members_by_group, assigned, chains, list(google_chain), list(payment_chain), overrides
+    return (
+        policy, members_by_group, assigned, chains,
+        list(google_chain), list(payment_chain), overrides, list(github_chain),
+    )
 
 
 load_env_file()
-POLICY, GROUP_MEMBERS, ASSIGNED_USERS, GROUP_CHAINS, GOOGLE_CHAIN, PAYMENT_CHAIN, OPENAI_USER_OVERRIDES = load_policy()
+(
+    POLICY, GROUP_MEMBERS, ASSIGNED_USERS, GROUP_CHAINS,
+    GOOGLE_CHAIN, PAYMENT_CHAIN, OPENAI_USER_OVERRIDES, GITHUB_CHAIN,
+) = load_policy()
 PAYMENT_DOMAINS = load_payment_domains()
 NODE = os.environ.get('NODE_ROLE', 'unknown').upper()
 WG = {
     'r1': {'iface': 'wg0', 'expected_ip': R1_PUBLIC_IP},
     'r2': {'iface': 'wg1', 'expected_ip': R2_PUBLIC_IP},
 }
-RESOURCE_KEYS = ('r1', 'r2', 'r3', 'r4', 'r5', 'r6')
+RESOURCE_KEYS = ('r1', 'r2', 'r3', 'r4', 'r5', 'r6', *GITHUB_PROBE_KEYS)
 
 
 def log(message):
@@ -182,7 +200,29 @@ def probe_socks(key):
         return False, f'{key} SOCKS5 -> {str(error)[:80]}'
 
 
+def probe_github_api(key):
+    args = [
+        'curl', '-4', '--fail', '--silent', '--show-error',
+        '--max-time', str(PROBE_TIMEOUT),
+        '-A', 'VPN-server-github-health/1.0',
+        '-o', '/dev/null', '-w', '%{http_code}', GITHUB_API_PROBE_URL,
+    ]
+    label = 'direct' if key == 'github-direct' else 'r2'
+    if key == 'github-r2':
+        args[3:3] = ['--interface', 'wg1']
+    try:
+        result = subprocess.run(
+            args, capture_output=True, text=True, timeout=PROBE_TIMEOUT + 2,
+        )
+        code = result.stdout.strip()
+        return result.returncode == 0 and code == '200', f'{label} GitHub tree -> HTTP {code or "empty"}'
+    except Exception as error:
+        return False, f'{label} GitHub tree -> {str(error)[:80]}'
+
+
 def probe(key):
+    if key in GITHUB_PROBE_KEYS:
+        return probe_github_api(key)
     return probe_wireguard(key) if key in WG else probe_socks(key)
 
 
@@ -218,6 +258,7 @@ def build_groups() -> dict[str, dict[str, Any]]:
             override['domains'],
         )
     groups['PAYMENT'] = group_descriptor('PAYMENT', [], PAYMENT_CHAIN, PAYMENT_DOMAINS)
+    groups['GITHUB_API'] = group_descriptor('GITHUB_API', [], GITHUB_CHAIN, GITHUB_API_DOMAINS)
     return groups
 
 
@@ -241,6 +282,12 @@ def ensure_state_shape(state: dict[str, Any]) -> dict[str, Any]:
     state.setdefault('outbounds', {})
     state.setdefault('switch_history', [])
     return state
+
+
+def candidate_state_key(candidate, group_name=None):
+    if group_name == 'GITHUB_API':
+        return 'github-direct' if candidate == 'direct' else 'github-r2'
+    return candidate.rsplit('-', 1)[-1]
 
 
 def find_rule(rules, descriptor):
@@ -349,12 +396,26 @@ def do_switches(switches):
 def main():
     log(f'=== Check V2 (node={NODE} dry_run={DRY_RUN}) ===')
     state = ensure_state_shape(load_state())
-    with ThreadPoolExecutor(max_workers=len(RESOURCE_KEYS)) as executor:
-        probe_results = dict(zip(RESOURCE_KEYS, executor.map(probe, RESOURCE_KEYS)))
+    probe_results = {}
+    due_keys = []
+    now = time.time()
+    for key in RESOURCE_KEYS:
+        resource = cast(dict[str, Any], state[key])
+        last_probe = float(resource.get('last_github_probe', 0) or 0)
+        if key in GITHUB_PROBE_KEYS and now - last_probe < GITHUB_PROBE_INTERVAL:
+            label = 'direct' if key == 'github-direct' else 'r2'
+            probe_results[key] = (resource['healthy'], f'{label} GitHub tree -> skipped (interval)')
+        else:
+            due_keys.append(key)
+    if due_keys:
+        with ThreadPoolExecutor(max_workers=len(due_keys)) as executor:
+            probe_results.update(dict(zip(due_keys, executor.map(probe, due_keys))))
     for key in RESOURCE_KEYS:
         healthy, detail = probe_results[key]
         log(detail)
         resource = cast(dict[str, Any], state[key])
+        if key in GITHUB_PROBE_KEYS and key in due_keys:
+            resource['last_github_probe'] = now
         resource['fail_count'] = 0 if healthy else resource['fail_count'] + 1
         resource['success_count'] = resource['success_count'] + 1 if healthy else 0
         was_healthy = resource['healthy']
@@ -373,7 +434,7 @@ def main():
         if current:
             state['outbounds'][name] = current
         target = next((candidate for candidate in descriptor['candidates']
-                       if state[candidate.rsplit('-', 1)[-1]]['healthy']), None)
+                       if state[candidate_state_key(candidate, name)]['healthy']), None)
         if not target:
             log(f'WARN: {name} has no healthy residential candidate; keeping {current}')
             continue

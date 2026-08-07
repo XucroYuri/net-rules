@@ -50,6 +50,8 @@ GOOGLE_WEB_DOMAINS = [
     'domain:about.google', 'domain:blog.google', 'domain:withgoogle.com',
     'domain:googleblog.com', 'domain:google.org', 'keyword:gemini',
 ]
+GITHUB_API_DOMAINS = ['domain:api.github.com']
+GITHUB_API_CHAIN = ('direct', 'residential-r2')
 
 
 def load_env_file(path=SOCKS_ENV):
@@ -140,6 +142,10 @@ def load_assignment_policy(path):
 load_env_file()
 PAYMENT_DOMAINS = load_payment_domains(PAYMENT_DOMAINS_FILE)
 ASSIGNMENT_POLICY, GROUP_MEMBERS, ASSIGNED_USERS, OPENAI_USER_OVERRIDES = load_assignment_policy(POLICY_PATH)
+if list(ASSIGNMENT_POLICY.get('github_api_domains') or []) != GITHUB_API_DOMAINS:
+    raise RuntimeError('GitHub API domain policy does not match the managed scope')
+if tuple(ASSIGNMENT_POLICY.get('github_api_failover_chain') or ()) != GITHUB_API_CHAIN:
+    raise RuntimeError('GitHub API failover must be direct VPS -> residential-r2')
 NODE = os.environ.get('NODE_ROLE', 'LA').upper()
 DEFAULT_RESIDENTIAL_OUTBOUND = 'residential-r3'
 PAYMENT_EXEMPTIONS = ASSIGNMENT_POLICY.get('client_direct_domains') or []
@@ -200,6 +206,7 @@ def build_rules():
             'domain:segment.io', 'domain:mixpanel.com', 'domain:amplitude.com',
         ], 'outboundTag': 'blocked'},
         {'type': 'field', 'domain': GOOGLE_CLOUD_API_EXCEPTIONS, 'outboundTag': 'direct'},
+        {'type': 'field', 'domain': GITHUB_API_DOMAINS, 'outboundTag': 'direct'},
         {'type': 'field', 'domain': PAYMENT_EXEMPTIONS, 'outboundTag': 'direct'},
         {'ip': ['geoip:private'], 'outboundTag': 'blocked', 'type': 'field'},
         {'outboundTag': 'blocked', 'protocol': ['bittorrent'], 'type': 'field'},
@@ -292,7 +299,7 @@ def active_users(cfg):
 
 def validate_config(cfg):
     rules = cfg.get('routing', {}).get('rules', [])
-    allowed_direct = set(GOOGLE_CLOUD_API_EXCEPTIONS + PAYMENT_EXEMPTIONS)
+    allowed_direct = set(GOOGLE_CLOUD_API_EXCEPTIONS + GITHUB_API_DOMAINS + PAYMENT_EXEMPTIONS)
     for rule in rules:
         outbound = rule.get('outboundTag')
         if outbound in FALLBACK_TAGS:
@@ -352,6 +359,11 @@ def write_groups_file():
             'GOOGLE_CLOUD_API_EXCEPTIONS': {
                 'domains': GOOGLE_CLOUD_API_EXCEPTIONS, 'outbound': 'direct',
             },
+            'GITHUB_API': {
+                'domains': GITHUB_API_DOMAINS,
+                'outbound': 'direct',
+                'failover_chain': list(GITHUB_API_CHAIN),
+            },
             'GOOGLE_R1_R2': {
                 'domains': GOOGLE_WEB_DOMAINS,
                 'members': r1_r2_users,
@@ -388,7 +400,8 @@ def write_groups_file():
 
 
 def main():
-    if ASSIGNMENT_POLICY.get('server_direct_domains') != GOOGLE_CLOUD_API_EXCEPTIONS:
+    expected_server_direct = GOOGLE_CLOUD_API_EXCEPTIONS + GITHUB_API_DOMAINS
+    if ASSIGNMENT_POLICY.get('server_direct_domains') != expected_server_direct:
         raise RuntimeError('server direct domains do not match the explicit API allowlist')
     print(f'=== Strict residential routing V2 (NODE={NODE}, groups={len(RESIDENTIAL_TAGS)}) ===')
     with open(CONFIG) as handle:
@@ -409,44 +422,56 @@ def main():
             raise RuntimeError((result.stderr or result.stdout)[-1600:])
         print('active_users=' + ','.join(sorted(active_users(cfg))))
         print('group_rules=' + ','.join(f'{tag}:{len(GROUP_MEMBERS[tag])}' for tag in RESIDENTIAL_TAGS))
-        print('payment_rule=R3->R4->R5->R6 google_r1_r2_rule=R3->R4->R5->R6')
+        print('payment_rule=R3->R4->R5->R6 google_r1_r2_rule=R3->R4->R5->R6 github_api_rule=direct->residential-r2')
         print('openai_user_overrides=' + ','.join(sorted(OPENAI_USER_OVERRIDES)))
         print('=== DRY RUN ===')
         return
 
-    backup = f'{CONFIG}.bak-final-v2-{TS}'
-    shutil.copy2(CONFIG, backup)
+    db_backup = f'{DB}.bak-final-v2-{TS}'
+    config_backup = f'{CONFIG}.bak-final-v2-{TS}'
+    shutil.copy2(DB, db_backup)
+    shutil.copy2(CONFIG, config_backup)
     connection = sqlite3.connect(DB)
     template_row = connection.execute(
         "SELECT value FROM settings WHERE key='xrayTemplateConfig'"
     ).fetchone()
+    preview = None
     try:
-        with open(CONFIG, 'w') as handle:
+        with tempfile.NamedTemporaryFile(
+            mode='w', suffix='.json', dir=os.path.dirname(CONFIG), delete=False,
+        ) as handle:
             json.dump(cfg, handle, indent=2)
-        result = subprocess.run([XRAY, 'run', '-test', '-c', CONFIG], capture_output=True, text=True)
+            preview = handle.name
+        result = subprocess.run([XRAY, 'run', '-test', '-c', preview], capture_output=True, text=True)
+        os.unlink(preview)
         if result.returncode != 0:
             raise RuntimeError((result.stderr or result.stdout)[-1600:])
-        if template_row and template_row[0]:
-            template = json.loads(template_row[0])
-            apply_routing(template, rules)
-            connection.execute(
-                "UPDATE settings SET value=? WHERE key='xrayTemplateConfig'",
-                (json.dumps(template, indent=2),),
-            )
-            connection.commit()
+        if not template_row or not template_row[0]:
+            raise RuntimeError('xrayTemplateConfig not found')
+        template = json.loads(template_row[0])
+        apply_routing(template, rules)
+        connection.execute(
+            "UPDATE settings SET value=? WHERE key='xrayTemplateConfig'",
+            (json.dumps(template, indent=2),),
+        )
+        connection.commit()
     except Exception:
+        if preview and os.path.exists(preview):
+            os.unlink(preview)
         connection.close()
-        shutil.copy2(backup, CONFIG)
+        shutil.copy2(db_backup, DB)
         raise
     connection.close()
     write_groups_file()
     restart = subprocess.run(['x-ui', 'restart'], capture_output=True, text=True, timeout=45)
     if restart.returncode != 0:
+        shutil.copy2(db_backup, DB)
+        subprocess.run(['x-ui', 'restart'], capture_output=True, timeout=45)
         raise RuntimeError(restart.stderr[-1600:])
     time.sleep(3)
     if not subprocess.run(['pgrep', '-f', 'xray-linux-amd64'], capture_output=True, text=True).stdout.strip():
         raise RuntimeError('xray process missing after restart')
-    print(f'[DONE] backup={backup} active_users={len(active_users(cfg))}')
+    print(f'[DONE] db_backup={db_backup} config_backup={config_backup} active_users={len(active_users(cfg))}')
 
 
 if __name__ == '__main__':

@@ -30,6 +30,11 @@
         {
             "type": "field",
             "outboundTag": "proxy",
+            "domain": ["domain:api.github.com"]
+        },
+        {
+            "type": "field",
+            "outboundTag": "proxy",
             "domain": [
                 "domain:stripe.com",
                 "domain:stripe.network",

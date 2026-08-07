@@ -1,6 +1,6 @@
 {
   "_updated": "20260806-115750",
-  "_arch": "STRICT RESIDENTIAL V2: six groups, payment, R1/R2 Google and liulishuo OpenAI R6 canary with R3-R5 failover",
+  "_arch": "STRICT RESIDENTIAL V2: six groups, payment, R1/R2 Google, liulishuo OpenAI R6 canary, and GitHub API direct VPS with R2 residential fallback",
   "GOOGLE_CLOUD_API_EXCEPTIONS": {
     "domains": [
       "domain:cloud.google.com",
@@ -18,6 +18,16 @@
       "domain:firebaseapp.com"
     ],
     "outbound": "direct"
+  },
+  "GITHUB_API": {
+    "domains": [
+      "domain:api.github.com"
+    ],
+    "outbound": "direct",
+    "failover_chain": [
+      "direct",
+      "residential-r2"
+    ]
   },
   "GOOGLE_R1_R2": {
     "domains": [
