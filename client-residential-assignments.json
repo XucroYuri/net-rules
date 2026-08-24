@@ -1,164 +1,126 @@
 {
-  "_updated": "2026-08-06",
-  "_policy": "strict-residential-v2",
-  "_comment": "Mapped clients use the assigned residential group. Payment, R1/R2 Google web traffic, and liulishuo OpenAI/ChatGPT traffic use safe residential overrides. GitHub API uses the current VPS directly, then R2 residential fallback. Other VPS fallback outbounds remain infrastructure-only.",
+  "_updated": "2026-08-24",
+  "_policy": "quality-stable-v1",
+  "_comment": "All active clients use one fixed Oxylabs ISP exit across VPS; low-risk bulk APIs use VPS direct; R4 is manual emergency fallback only.",
   "failover_order": [
-    "residential-r1",
-    "residential-r2",
-    "residential-r3",
-    "residential-r4",
-    "residential-r5",
-    "residential-r6"
+    "manual-only",
+    "residential-r4"
   ],
   "groups": {
-    "residential-r1": {
-      "exit_ip": "192.204.62.110",
+    "residential-o1": {
+      "outbound": "residential-o1",
+      "exit_ip": "92.71.82.251",
       "members": [
-        "huangyuwan",
-        "hong",
-        "zhoutingyun",
         "daiyi",
+        "hong",
+        "huangyuwan",
         "liqin",
         "maoxinyi",
         "pansiyan",
-        "xuyu"
+        "xuyu",
+        "zhoutingyun"
       ],
-      "failover_chain": [
-        "residential-r1",
-        "residential-r2",
-        "residential-r3",
-        "residential-r4",
-        "residential-r5",
-        "residential-r6"
+      "manual_fallback_chain": [
+        "residential-o1",
+        "residential-r4"
       ]
     },
-    "residential-r2": {
-      "exit_ip": "38.150.34.205",
+    "residential-o2": {
+      "outbound": "residential-o2",
+      "exit_ip": "92.71.83.244",
       "members": [
+        "wangxiaoyu",
         "yangheng",
-        "yangjingzhou",
+        "yangjingzhou"
+      ],
+      "manual_fallback_chain": [
+        "residential-o2",
+        "residential-r4"
+      ]
+    },
+    "residential-o3": {
+      "outbound": "residential-o3",
+      "exit_ip": "92.71.84.185",
+      "members": [
+        "chenfeng",
+        "dou",
+        "lirui",
+        "liujun",
+        "wangbo",
+        "weiyuan",
+        "zhangzuoyin"
+      ],
+      "manual_fallback_chain": [
+        "residential-o3",
+        "residential-r4"
+      ]
+    },
+    "residential-o4": {
+      "outbound": "residential-o4",
+      "exit_ip": "92.71.85.34",
+      "members": [
         "liulishuo",
         "maoli",
-        "siyue",
-        "wangxiaoyu",
-        "wenting",
         "xixi",
         "yangyu",
         "yangzixian"
       ],
-      "failover_chain": [
-        "residential-r2",
-        "residential-r1",
-        "residential-r3",
-        "residential-r4",
-        "residential-r5",
-        "residential-r6"
-      ]
-    },
-    "residential-r3": {
-      "exit_ip": "38.100.67.138",
-      "members": [
-        "HUACHI"
-      ],
-      "failover_chain": [
-        "residential-r3",
-        "residential-r4",
-        "residential-r5",
-        "residential-r6"
-      ]
-    },
-    "residential-r4": {
-      "exit_ip": "38.100.67.252",
-      "members": [
-        "zhangzuoyin",
-        "sunhuan",
-        "pengzhou",
-        "chenfeng"
-      ],
-      "failover_chain": [
-        "residential-r4",
-        "residential-r5",
-        "residential-r6",
-        "residential-r3"
-      ]
-    },
-    "residential-r5": {
-      "exit_ip": "38.100.67.131",
-      "members": [
-        "dou",
-        "lirui",
-        "liujun",
-        "studio-admin",
-        "wangbo",
-        "weiyuan"
-      ],
-      "failover_chain": [
-        "residential-r5",
-        "residential-r6",
-        "residential-r3",
+      "manual_fallback_chain": [
+        "residential-o4",
         "residential-r4"
       ]
     },
-    "residential-r6": {
-      "exit_ip": "154.6.235.76",
-      "members": [],
-      "failover_chain": [
-        "residential-r6",
-        "residential-r3",
-        "residential-r4",
-        "residential-r5"
-      ]
-    }
-  },
-  "additional_assignments": {
-    "lirui-cdn": "residential-r5"
-  },
-  "google_r1_r2_failover_chain": [
-    "residential-r3",
-    "residential-r4",
-    "residential-r5",
-    "residential-r6"
-  ],
-  "payment_failover_chain": [
-    "residential-r3",
-    "residential-r4",
-    "residential-r5",
-    "residential-r6"
-  ],
-  "openai_user_overrides": {
-    "liulishuo": {
-      "domains": [
-        "domain:openai.com",
-        "domain:chatgpt.com",
-        "domain:oaistatic.com",
-        "domain:oaiusercontent.com",
-        "domain:chat.openai.com",
-        "domain:platform.openai.com",
-        "domain:api.openai.com"
+    "residential-o5": {
+      "outbound": "residential-o5",
+      "exit_ip": "92.71.86.31",
+      "members": [
+        "pengzhou",
+        "siyue",
+        "studio-admin",
+        "sunhuan"
       ],
-      "outbound": "residential-r6",
-      "failover_chain": [
-        "residential-r6",
-        "residential-r3",
-        "residential-r4",
-        "residential-r5"
+      "manual_fallback_chain": [
+        "residential-o5",
+        "residential-r4"
       ]
     }
   },
-  "github_api_domains": [
-    "domain:api.github.com"
-  ],
-  "github_api_failover_chain": [
-    "direct",
-    "residential-r2"
-  ],
-  "client_direct_domains": [
-    "domain:alipay.com",
-    "domain:alipayobjects.com",
-    "domain:pay.weixin.qq.com",
-    "domain:tenpay.com"
+  "quality_sensitive_domains": [
+    "domain:openai.com",
+    "domain:chatgpt.com",
+    "domain:oaistatic.com",
+    "domain:oaiusercontent.com",
+    "domain:chatgpt.site",
+    "domain:chatgpt-team.site",
+    "domain:google.com",
+    "domain:gstatic.com",
+    "domain:googleusercontent.com",
+    "domain:ai.google.dev",
+    "domain:google.dev",
+    "domain:deepmind.google",
+    "domain:notebooklm.google",
+    "domain:claude.ai",
+    "domain:anthropic.com",
+    "domain:x.ai",
+    "domain:grok.com",
+    "domain:perplexity.ai",
+    "domain:adobe.com",
+    "domain:midjourney.com",
+    "domain:runwayml.com",
+    "domain:figma.com",
+    "domain:notion.so",
+    "domain:stripe.com",
+    "domain:paypal.com",
+    "domain:checkout.com",
+    "domain:paddle.com",
+    "domain:wise.com",
+    "domain:payoneer.com",
+    "domain:coinbase.com"
   ],
   "server_direct_domains": [
+    "domain:api.github.com",
+    "domain:githubusercontent.com",
+    "domain:github-releases.githubusercontent.com",
     "domain:cloud.google.com",
     "domain:firebase.google.com",
     "domain:googleapis.com",
@@ -172,6 +134,32 @@
     "domain:cloudfunctions.net",
     "domain:firebaseio.com",
     "domain:firebaseapp.com",
+    "domain:registry.npmjs.org",
+    "domain:pypi.org",
+    "domain:pythonhosted.org",
+    "domain:docker.io",
+    "domain:download.docker.com",
+    "domain:nodejs.org",
+    "domain:cdn.jsdelivr.net",
+    "domain:unpkg.com"
+  ],
+  "client_direct_domains": [
+    "domain:alipay.com",
+    "domain:alipayobjects.com",
+    "domain:pay.weixin.qq.com",
+    "domain:tenpay.com"
+  ],
+  "github_api_domains": [
     "domain:api.github.com"
-  ]
+  ],
+  "manual_emergency_fallback": {
+    "outbound": "residential-r4",
+    "requires_all_vps_sync": true,
+    "automatic": false
+  },
+  "risk_controls": {
+    "route_audit_interval": "15m",
+    "provider_stream_probe_interval": "30m",
+    "client_links_changed": false
+  }
 }
