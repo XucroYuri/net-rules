@@ -15,11 +15,13 @@
       "exit_ip": "192.204.62.110",
       "members": [
         "huangyuwan",
-        "hongge",
+        "hong",
         "zhoutingyun",
         "daiyi",
         "liqin",
-        "maoxinyi"
+        "maoxinyi",
+        "pansiyan",
+        "xuyu"
       ],
       "failover_chain": [
         "residential-r1",
@@ -35,7 +37,6 @@
       "members": [
         "yangheng",
         "yangjingzhou",
-        "pansiyan",
         "liulishuo",
         "maoli",
         "siyue",
@@ -100,9 +101,7 @@
     },
     "residential-r6": {
       "exit_ip": "154.6.235.76",
-      "members": [
-        "xuyu"
-      ],
+      "members": [],
       "failover_chain": [
         "residential-r6",
         "residential-r3",

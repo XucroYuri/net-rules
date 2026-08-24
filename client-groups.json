@@ -59,11 +59,12 @@
     ],
     "members": [
       "huangyuwan",
-      "hongge",
+      "hong",
       "zhoutingyun",
       "daiyi",
       "liqin",
       "maoxinyi",
+      "xuyu",
       "yangheng",
       "yangjingzhou",
       "pansiyan",
@@ -108,11 +109,13 @@
     "residential-r1": {
       "members": [
         "huangyuwan",
-        "hongge",
+        "hong",
         "zhoutingyun",
         "daiyi",
         "liqin",
-        "maoxinyi"
+        "maoxinyi",
+        "pansiyan",
+        "xuyu"
       ],
       "outbound": "residential-r1",
       "failover_chain": [
@@ -128,7 +131,6 @@
       "members": [
         "yangheng",
         "yangjingzhou",
-        "pansiyan",
         "liulishuo",
         "maoli",
         "siyue",
@@ -194,9 +196,7 @@
       ]
     },
     "residential-r6": {
-      "members": [
-        "xuyu"
-      ],
+      "members": [],
       "outbound": "residential-r6",
       "failover_chain": [
         "residential-r6",
