@@ -1,6 +1,17 @@
 {
-  "_updated": "20260824-121000",
-  "_arch": "QUALITY STABLE V1: fixed O1-O5 per client, low-risk bulk APIs direct, manual R4 emergency fallback",
+  "_updated": "20260831-022500",
+  "_arch": "SUBSCRIPTION CA EGRESS V2: all clients use verified Los Angeles 08 REALITY, Adobe follows client mapping, other West Coast nodes and O1-O5 remain backup only",
+  "SUBSCRIPTION_EGRESS": {
+    "enabled": true,
+    "mode": "rollout",
+    "catalog_nodes": 55,
+    "primary_pool": [
+      "sub-us-losangeles-reality-01"
+    ],
+    "client_state_file": "subscription-egress-state.json",
+    "private_catalog_path": "/etc/x-ui/subscription-egress.catalog.json",
+    "secret_boundary": "subscription credentials stay on VPS only"
+  },
   "QUALITY_DIRECT": {
     "domains": [
       "domain:api.github.com",
@@ -51,7 +62,6 @@
       "domain:x.ai",
       "domain:grok.com",
       "domain:perplexity.ai",
-      "domain:adobe.com",
       "domain:midjourney.com",
       "domain:runwayml.com",
       "domain:figma.com",
@@ -64,13 +74,21 @@
       "domain:payoneer.com",
       "domain:coinbase.com"
     ],
-    "outbound": "per-client-fixed-o1-o5",
+    "outbound": "per-client-r3-r5",
     "note": "Identity-sensitive traffic keeps the same ISP exit across LA, BWH and HK"
   },
+  "ADOBE_CLIENT_ALIGNED": {
+    "domains": [
+      "domain:adobe.com",
+      "domain:adobelogin.com"
+    ],
+    "outbound": "per-client-r3-r5",
+    "note": "Adobe uses the same residential exit as the client; no special Adobe routing"
+  },
   "CLIENT_QUALITY": {
-    "residential-o1": {
-      "outbound": "residential-o1",
-      "exit_ip": "92.71.82.251",
+    "residential-r3": {
+      "outbound": "residential-r3",
+      "exit_ip": "38.100.67.138",
       "members": [
         "daiyi",
         "hong",
@@ -79,28 +97,39 @@
         "maoxinyi",
         "pansiyan",
         "xuyu",
-        "zhoutingyun"
+        "zhoutingyun",
+        "liulishuo",
+        "maoli",
+        "xixi",
+        "yangyu",
+        "yangzixian"
       ],
       "manual_fallback_chain": [
-        "residential-o1",
-        "residential-r4"
+        "residential-r3",
+        "residential-r4",
+        "residential-r5"
       ]
     },
-    "residential-o2": {
-      "outbound": "residential-o2",
-      "exit_ip": "92.71.83.244",
+    "residential-r4": {
+      "outbound": "residential-r4",
+      "exit_ip": "38.100.67.252",
       "members": [
         "yangheng",
-        "yangjingzhou"
+        "yangjingzhou",
+        "pengzhou",
+        "siyue",
+        "studio-admin",
+        "sunhuan"
       ],
       "manual_fallback_chain": [
-        "residential-o2",
-        "residential-r4"
+        "residential-r4",
+        "residential-r3",
+        "residential-r5"
       ]
     },
-    "residential-o3": {
-      "outbound": "residential-o3",
-      "exit_ip": "92.71.84.185",
+    "residential-r5": {
+      "outbound": "residential-r5",
+      "exit_ip": "38.100.67.131",
       "members": [
         "chenfeng",
         "dou",
@@ -111,36 +140,8 @@
         "zhangzuoyin"
       ],
       "manual_fallback_chain": [
-        "residential-o3",
-        "residential-r4"
-      ]
-    },
-    "residential-o4": {
-      "outbound": "residential-o4",
-      "exit_ip": "92.71.85.34",
-      "members": [
-        "liulishuo",
-        "maoli",
-        "xixi",
-        "yangyu",
-        "yangzixian"
-      ],
-      "manual_fallback_chain": [
-        "residential-o4",
-        "residential-r4"
-      ]
-    },
-    "residential-o5": {
-      "outbound": "residential-o5",
-      "exit_ip": "92.71.86.31",
-      "members": [
-        "pengzhou",
-        "siyue",
-        "studio-admin",
-        "sunhuan"
-      ],
-      "manual_fallback_chain": [
-        "residential-o5",
+        "residential-r5",
+        "residential-r3",
         "residential-r4"
       ]
     }
@@ -204,7 +205,7 @@
       "domain:pay.weixin.qq.com",
       "domain:tenpay.com"
     ],
-    "outbound": "per-client-fixed-o1-o5",
+    "outbound": "per-client-r3-r5",
     "failover_chain": [
       "manual:residential-r4"
     ]
@@ -217,6 +218,13 @@
     "automatic_failover": false,
     "route_audit_interval": "15m",
     "provider_stream_probe_interval": "30m",
-    "bulk_client_routing_change": false
+    "bulk_client_routing_change": true,
+    "oxylabs_backup_pool": [
+      "residential-o1",
+      "residential-o2",
+      "residential-o3",
+      "residential-o4",
+      "residential-o5"
+    ]
   }
 }
