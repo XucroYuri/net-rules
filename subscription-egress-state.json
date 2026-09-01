@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "_updated": "20260831-022500",
+  "_updated": "20260901-014911",
   "enabled": true,
-  "mode": "rollout",
+  "mode": "canary",
   "default_primary": "sub-us-losangeles-reality-01",
   "client_primary": {
     "chenfeng": "sub-us-losangeles-reality-01",
@@ -10,7 +10,7 @@
     "dou": "sub-us-losangeles-reality-01",
     "hong": "sub-us-losangeles-reality-01",
     "huangyuwan": "sub-us-losangeles-reality-01",
-    "liqin": "sub-us-losangeles-reality-01",
+    "liqin": "residential-r4",
     "lirui": "sub-us-losangeles-reality-01",
     "liujun": "sub-us-losangeles-reality-01",
     "liulishuo": "sub-us-losangeles-reality-01",
@@ -24,7 +24,7 @@
     "wangbo": "sub-us-losangeles-reality-01",
     "weiyuan": "sub-us-losangeles-reality-01",
     "xixi": "sub-us-losangeles-reality-01",
-    "xuyu": "sub-us-losangeles-reality-01",
+    "xuyu": "residential-r4",
     "yangheng": "sub-us-losangeles-reality-01",
     "yangjingzhou": "sub-us-losangeles-reality-01",
     "yangyu": "sub-us-losangeles-reality-01",
@@ -33,7 +33,8 @@
     "zhoutingyun": "sub-us-losangeles-reality-01"
   },
   "primary_pool": [
-    "sub-us-losangeles-reality-01"
+    "sub-us-losangeles-reality-01",
+    "residential-r4"
   ],
-  "backup_policy": "all subscription nodes remain installed as non-default outbounds; old residential O1-O5/R3-R6 remain retained for rollback"
+  "backup_policy": "xuyu and liqin use fixed California residential-r4 for Gemini canary on LA/BWH; other clients remain on Los Angeles 08; HK stays emergency-only"
 }
