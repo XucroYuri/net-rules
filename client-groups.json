@@ -1,57 +1,27 @@
 {
-  "_updated": "20260901-020140",
-  "_arch": "GEMINI FIXED EGRESS V4: all 26 clients use fixed California residential-r4 on LA/BWH; subscription nodes remain manual rollback; HK is emergency-only",
+  "_updated": "20260901-145754",
+  "_arch": "SUBSCRIPTION CA EGRESS V5: all 26 clients use verified Los Angeles 08 REALITY across LA/BWH/HK; R4 and other West Coast nodes remain manual comparison only",
   "SUBSCRIPTION_EGRESS": {
     "enabled": true,
     "mode": "rollout",
     "catalog_nodes": 55,
     "primary_pool": [
-      "residential-r4"
+      "sub-us-losangeles-reality-01"
     ],
-    "client_overrides": {
-      "residential-r4": [
-        "chenfeng",
-        "daiyi",
-        "dou",
-        "hong",
-        "huangyuwan",
-        "liqin",
-        "lirui",
-        "liujun",
-        "liulishuo",
-        "maoli",
-        "maoxinyi",
-        "pansiyan",
-        "pengzhou",
-        "siyue",
-        "studio-admin",
-        "sunhuan",
-        "wangbo",
-        "weiyuan",
-        "xixi",
-        "xuyu",
-        "yangheng",
-        "yangjingzhou",
-        "yangyu",
-        "yangzixian",
-        "zhangzuoyin",
-        "zhoutingyun"
-      ]
-    },
     "client_state_file": "subscription-egress-state.json",
     "private_catalog_path": "/etc/x-ui/subscription-egress.catalog.json",
     "secret_boundary": "subscription credentials stay on VPS only"
   },
-  "GEMINI_FIXED_EGRESS": {
+  "PRIMARY_EGRESS": {
     "member_count": 26,
     "members_source": "subscription-egress-state.json",
-    "outbound": "residential-r4",
+    "outbound": "sub-us-losangeles-reality-01",
     "required_vps": [
       "dmit-la",
-      "bandwagonhost"
+      "bandwagonhost",
+      "dmit-hk"
     ],
-    "hk_policy": "emergency-only; not a production acceptance gate",
-    "reason": "xuyu and liqin canary passed on fixed R4; rollout extends the same Gemini-safe fixed egress to every active client"
+    "reason": "R4 reproduced intermittent ChatGPT/Codex TLS EOF while Los Angeles 08 remained stable in VPS and full-link comparison"
   },
   "QUALITY_DIRECT": {
     "domains": [
@@ -123,8 +93,8 @@
       "domain:adobe.com",
       "domain:adobelogin.com"
     ],
-    "outbound": "per-client-state",
-    "note": "Adobe follows the same fixed R4 state as every active client; no special Adobe routing"
+    "outbound": "per-client-r3-r5",
+    "note": "Legacy quality inventory remains grouped by R3-R5; live subscription state overrides every active client to Los Angeles 08"
   },
   "CLIENT_QUALITY": {
     "residential-r3": {
@@ -246,14 +216,15 @@
       "domain:pay.weixin.qq.com",
       "domain:tenpay.com"
     ],
-    "outbound": "per-client-r3-r5",
+    "outbound": "per-client-state",
     "failover_chain": [
+      "manual:sub-us-losangeles-reality-01",
       "manual:residential-r4"
     ]
   },
   "DEFAULT_UNASSIGNED": {
-    "outbound": "residential-r4",
-    "mode": "manual-emergency-only"
+    "outbound": "sub-us-losangeles-reality-01",
+    "mode": "subscription-default"
   },
   "_risk_controls": {
     "automatic_failover": false,

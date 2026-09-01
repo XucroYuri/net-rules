@@ -1,49 +1,19 @@
 {
   "_updated": "2026-09-01",
-  "_policy": "subscription-ca-egress-v4-gemini-fixed-r4",
-  "_comment": "All 26 clients use fixed California residential-r4 on LA/BWH for Gemini; subscription nodes are manual rollback candidates; HK is emergency-only and not a production acceptance gate.",
+  "_policy": "subscription-ca-egress-v5-la08-tls-recovery",
+  "_comment": "All 26 clients use verified Los Angeles 08 REALITY across LA/BWH/HK after R4 reproduced intermittent ChatGPT/Codex TLS EOF.",
   "subscription_egress": {
     "mode": "rollout",
     "catalog_nodes": 55,
     "primary_pool": [
-      "residential-r4"
+      "sub-us-losangeles-reality-01"
     ],
-    "client_overrides": {
-      "residential-r4": [
-        "chenfeng",
-        "daiyi",
-        "dou",
-        "hong",
-        "huangyuwan",
-        "liqin",
-        "lirui",
-        "liujun",
-        "liulishuo",
-        "maoli",
-        "maoxinyi",
-        "pansiyan",
-        "pengzhou",
-        "siyue",
-        "studio-admin",
-        "sunhuan",
-        "wangbo",
-        "weiyuan",
-        "xixi",
-        "xuyu",
-        "yangheng",
-        "yangjingzhou",
-        "yangyu",
-        "yangzixian",
-        "zhangzuoyin",
-        "zhoutingyun"
-      ]
-    },
     "state_file": "subscription-egress-state.json"
   },
   "failover_order": [
     "manual-only",
-    "residential-r4",
     "sub-us-losangeles-reality-01",
+    "residential-r4",
     "residential-r3",
     "residential-r5"
   ],
@@ -51,7 +21,21 @@
     "residential-r3": {
       "outbound": "residential-r3",
       "exit_ip": "38.100.67.138",
-      "members": [],
+      "members": [
+        "daiyi",
+        "hong",
+        "huangyuwan",
+        "liqin",
+        "maoxinyi",
+        "pansiyan",
+        "xuyu",
+        "zhoutingyun",
+        "liulishuo",
+        "maoli",
+        "xixi",
+        "yangyu",
+        "yangzixian"
+      ],
       "manual_fallback_chain": [
         "residential-r3",
         "residential-r4",
@@ -62,32 +46,12 @@
       "outbound": "residential-r4",
       "exit_ip": "38.100.67.252",
       "members": [
-        "chenfeng",
-        "daiyi",
-        "dou",
-        "hong",
-        "huangyuwan",
-        "liqin",
-        "lirui",
-        "liujun",
-        "liulishuo",
-        "maoli",
-        "maoxinyi",
-        "pansiyan",
+        "yangheng",
+        "yangjingzhou",
         "pengzhou",
         "siyue",
         "studio-admin",
-        "sunhuan",
-        "wangbo",
-        "weiyuan",
-        "xixi",
-        "xuyu",
-        "yangheng",
-        "yangjingzhou",
-        "yangyu",
-        "yangzixian",
-        "zhangzuoyin",
-        "zhoutingyun"
+        "sunhuan"
       ],
       "manual_fallback_chain": [
         "residential-r4",
@@ -98,7 +62,15 @@
     "residential-r5": {
       "outbound": "residential-r5",
       "exit_ip": "38.100.67.131",
-      "members": [],
+      "members": [
+        "chenfeng",
+        "dou",
+        "lirui",
+        "liujun",
+        "wangbo",
+        "weiyuan",
+        "zhangzuoyin"
+      ],
       "manual_fallback_chain": [
         "residential-r5",
         "residential-r3",
@@ -179,11 +151,7 @@
   ],
   "manual_emergency_fallback": {
     "outbound": "residential-r4",
-    "requires_primary_vps_sync": [
-      "dmit-la",
-      "bandwagonhost"
-    ],
-    "hk_policy": "emergency-only",
+    "requires_all_vps_sync": true,
     "automatic": false
   },
   "risk_controls": {
