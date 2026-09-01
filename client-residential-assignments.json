@@ -1,47 +1,57 @@
 {
   "_updated": "2026-09-01",
-  "_policy": "subscription-ca-egress-v3-gemini-canary",
-  "_comment": "xuyu and liqin use fixed California residential-r4 on LA/BWH for Gemini; other clients remain on Los Angeles 08; HK is emergency-only and not a production acceptance gate.",
+  "_policy": "subscription-ca-egress-v4-gemini-fixed-r4",
+  "_comment": "All 26 clients use fixed California residential-r4 on LA/BWH for Gemini; subscription nodes are manual rollback candidates; HK is emergency-only and not a production acceptance gate.",
   "subscription_egress": {
-    "mode": "canary",
+    "mode": "rollout",
     "catalog_nodes": 55,
     "primary_pool": [
-      "sub-us-losangeles-reality-01",
       "residential-r4"
     ],
     "client_overrides": {
       "residential-r4": [
+        "chenfeng",
+        "daiyi",
+        "dou",
+        "hong",
+        "huangyuwan",
         "liqin",
-        "xuyu"
+        "lirui",
+        "liujun",
+        "liulishuo",
+        "maoli",
+        "maoxinyi",
+        "pansiyan",
+        "pengzhou",
+        "siyue",
+        "studio-admin",
+        "sunhuan",
+        "wangbo",
+        "weiyuan",
+        "xixi",
+        "xuyu",
+        "yangheng",
+        "yangjingzhou",
+        "yangyu",
+        "yangzixian",
+        "zhangzuoyin",
+        "zhoutingyun"
       ]
     },
     "state_file": "subscription-egress-state.json"
   },
   "failover_order": [
     "manual-only",
-    "residential-r3",
     "residential-r4",
+    "sub-us-losangeles-reality-01",
+    "residential-r3",
     "residential-r5"
   ],
   "groups": {
     "residential-r3": {
       "outbound": "residential-r3",
       "exit_ip": "38.100.67.138",
-      "members": [
-        "daiyi",
-        "hong",
-        "huangyuwan",
-        "liqin",
-        "maoxinyi",
-        "pansiyan",
-        "xuyu",
-        "zhoutingyun",
-        "liulishuo",
-        "maoli",
-        "xixi",
-        "yangyu",
-        "yangzixian"
-      ],
+      "members": [],
       "manual_fallback_chain": [
         "residential-r3",
         "residential-r4",
@@ -52,12 +62,32 @@
       "outbound": "residential-r4",
       "exit_ip": "38.100.67.252",
       "members": [
-        "yangheng",
-        "yangjingzhou",
+        "chenfeng",
+        "daiyi",
+        "dou",
+        "hong",
+        "huangyuwan",
+        "liqin",
+        "lirui",
+        "liujun",
+        "liulishuo",
+        "maoli",
+        "maoxinyi",
+        "pansiyan",
         "pengzhou",
         "siyue",
         "studio-admin",
-        "sunhuan"
+        "sunhuan",
+        "wangbo",
+        "weiyuan",
+        "xixi",
+        "xuyu",
+        "yangheng",
+        "yangjingzhou",
+        "yangyu",
+        "yangzixian",
+        "zhangzuoyin",
+        "zhoutingyun"
       ],
       "manual_fallback_chain": [
         "residential-r4",
@@ -68,15 +98,7 @@
     "residential-r5": {
       "outbound": "residential-r5",
       "exit_ip": "38.100.67.131",
-      "members": [
-        "chenfeng",
-        "dou",
-        "lirui",
-        "liujun",
-        "wangbo",
-        "weiyuan",
-        "zhangzuoyin"
-      ],
+      "members": [],
       "manual_fallback_chain": [
         "residential-r5",
         "residential-r3",

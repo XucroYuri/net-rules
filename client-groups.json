@@ -1,36 +1,57 @@
 {
-  "_updated": "20260901-014911",
-  "_arch": "GEMINI CANARY V3: xuyu and liqin use fixed California residential-r4 on LA/BWH; other clients remain on Los Angeles 08; HK is emergency-only",
+  "_updated": "20260901-020140",
+  "_arch": "GEMINI FIXED EGRESS V4: all 26 clients use fixed California residential-r4 on LA/BWH; subscription nodes remain manual rollback; HK is emergency-only",
   "SUBSCRIPTION_EGRESS": {
     "enabled": true,
-    "mode": "canary",
+    "mode": "rollout",
     "catalog_nodes": 55,
     "primary_pool": [
-      "sub-us-losangeles-reality-01",
       "residential-r4"
     ],
     "client_overrides": {
       "residential-r4": [
+        "chenfeng",
+        "daiyi",
+        "dou",
+        "hong",
+        "huangyuwan",
         "liqin",
-        "xuyu"
+        "lirui",
+        "liujun",
+        "liulishuo",
+        "maoli",
+        "maoxinyi",
+        "pansiyan",
+        "pengzhou",
+        "siyue",
+        "studio-admin",
+        "sunhuan",
+        "wangbo",
+        "weiyuan",
+        "xixi",
+        "xuyu",
+        "yangheng",
+        "yangjingzhou",
+        "yangyu",
+        "yangzixian",
+        "zhangzuoyin",
+        "zhoutingyun"
       ]
     },
     "client_state_file": "subscription-egress-state.json",
     "private_catalog_path": "/etc/x-ui/subscription-egress.catalog.json",
     "secret_boundary": "subscription credentials stay on VPS only"
   },
-  "GEMINI_CANARY": {
-    "members": [
-      "liqin",
-      "xuyu"
-    ],
+  "GEMINI_FIXED_EGRESS": {
+    "member_count": 26,
+    "members_source": "subscription-egress-state.json",
     "outbound": "residential-r4",
     "required_vps": [
       "dmit-la",
       "bandwagonhost"
     ],
     "hk_policy": "emergency-only; not a production acceptance gate",
-    "reason": "Los Angeles 08 produced account-level Gemini region failures; subscription San Jose candidates showed rotating egress IPs"
+    "reason": "xuyu and liqin canary passed on fixed R4; rollout extends the same Gemini-safe fixed egress to every active client"
   },
   "QUALITY_DIRECT": {
     "domains": [
@@ -102,8 +123,8 @@
       "domain:adobe.com",
       "domain:adobelogin.com"
     ],
-    "outbound": "per-client-r3-r5",
-    "note": "Adobe uses the same residential exit as the client; no special Adobe routing"
+    "outbound": "per-client-state",
+    "note": "Adobe follows the same fixed R4 state as every active client; no special Adobe routing"
   },
   "CLIENT_QUALITY": {
     "residential-r3": {
