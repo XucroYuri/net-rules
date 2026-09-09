@@ -1,7 +1,7 @@
 {
-  "_updated": "2026-09-01",
+  "_updated": "2026-09-09",
   "_policy": "subscription-ca-egress-v5-la08-tls-recovery",
-  "_comment": "All 26 clients use verified Los Angeles 08 REALITY across LA/BWH/HK after R4 reproduced intermittent ChatGPT/Codex TLS EOF.",
+  "_comment": "All 25 active clients use verified Los Angeles 08 REALITY across LA/BWH/HK after R4 reproduced intermittent ChatGPT/Codex TLS EOF.",
   "subscription_egress": {
     "mode": "rollout",
     "catalog_nodes": 55,
@@ -48,7 +48,6 @@
       "members": [
         "yangheng",
         "yangjingzhou",
-        "pengzhou",
         "siyue",
         "studio-admin",
         "sunhuan"

@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "_updated": "20260901-145754",
+  "_updated": "20260909-070000",
   "enabled": true,
   "mode": "rollout",
   "default_primary": "sub-us-losangeles-reality-01",
@@ -17,7 +17,6 @@
     "maoli": "sub-us-losangeles-reality-01",
     "maoxinyi": "sub-us-losangeles-reality-01",
     "pansiyan": "sub-us-losangeles-reality-01",
-    "pengzhou": "sub-us-losangeles-reality-01",
     "siyue": "sub-us-losangeles-reality-01",
     "studio-admin": "sub-us-losangeles-reality-01",
     "sunhuan": "sub-us-losangeles-reality-01",
@@ -35,5 +34,5 @@
   "primary_pool": [
     "sub-us-losangeles-reality-01"
   ],
-  "backup_policy": "all 26 clients use verified Los Angeles 08 REALITY across LA/BWH/HK; residential-r4 and other West Coast nodes remain installed for manual comparison and rollback"
+  "backup_policy": "all 25 active clients use verified Los Angeles 08 REALITY across LA/BWH/HK; residential-r4 and other West Coast nodes remain installed for manual comparison and rollback"
 }

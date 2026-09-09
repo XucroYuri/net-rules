@@ -1,6 +1,6 @@
 {
-  "_updated": "20260901-145754",
-  "_arch": "SUBSCRIPTION CA EGRESS V5: all 26 clients use verified Los Angeles 08 REALITY across LA/BWH/HK; R4 and other West Coast nodes remain manual comparison only",
+  "_updated": "20260909-070000",
+  "_arch": "SUBSCRIPTION CA EGRESS V5: all 25 active clients use verified Los Angeles 08 REALITY across LA/BWH/HK; R4 and other West Coast nodes remain manual comparison only",
   "SUBSCRIPTION_EGRESS": {
     "enabled": true,
     "mode": "rollout",
@@ -13,7 +13,7 @@
     "secret_boundary": "subscription credentials stay on VPS only"
   },
   "PRIMARY_EGRESS": {
-    "member_count": 26,
+    "member_count": 25,
     "members_source": "subscription-egress-state.json",
     "outbound": "sub-us-losangeles-reality-01",
     "required_vps": [
@@ -127,7 +127,6 @@
       "members": [
         "yangheng",
         "yangjingzhou",
-        "pengzhou",
         "siyue",
         "studio-admin",
         "sunhuan"
