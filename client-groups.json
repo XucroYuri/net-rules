@@ -1,5 +1,5 @@
 {
-  "_updated": "20260901-145754",
+  "_updated": "20260914-101511",
   "_arch": "SUBSCRIPTION CA EGRESS V5: all 26 clients use verified Los Angeles 08 REALITY across LA/BWH/HK; R4 and other West Coast nodes remain manual comparison only",
   "SUBSCRIPTION_EGRESS": {
     "enabled": true,
@@ -127,7 +127,7 @@
       "members": [
         "yangheng",
         "yangjingzhou",
-        "pengzhou",
+        "yinchao",
         "siyue",
         "studio-admin",
         "sunhuan"

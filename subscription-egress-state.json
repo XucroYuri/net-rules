@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "_updated": "20260901-145754",
+  "_updated": "20260914-101511",
   "enabled": true,
   "mode": "rollout",
   "default_primary": "sub-us-losangeles-reality-01",
@@ -17,7 +17,7 @@
     "maoli": "sub-us-losangeles-reality-01",
     "maoxinyi": "sub-us-losangeles-reality-01",
     "pansiyan": "sub-us-losangeles-reality-01",
-    "pengzhou": "sub-us-losangeles-reality-01",
+    "yinchao": "sub-us-losangeles-reality-01",
     "siyue": "sub-us-losangeles-reality-01",
     "studio-admin": "sub-us-losangeles-reality-01",
     "sunhuan": "sub-us-losangeles-reality-01",
