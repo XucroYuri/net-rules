@@ -2,12 +2,16 @@
 
 本仓库为工作室代理客户端提供自动同步数据。
 
+> **⚠️ 2026-10-17：HUACHI 兜底已停用，请用正式订阅。**
+> `huachi-subscription.txt` 及客户端分组/出口状态文件已从本仓移除；本仓不再提供任何节点订阅。
+> 自动同步脚本（sync.ps1 / sync.py）拉取时将得到 404，不会影响 v2rayN 中的其他订阅。
+
+
 ## 文件说明
 
 | 文件 | 用途 |
 |------|------|
 | `version.txt` | 版本号，客户端比对后决定是否更新 |
-| `huachi-subscription.txt` | HUACHI 通用兜底通道订阅链接 |
 | `guiNConfig-template.json` | v2rayN 界面配置模板 |
 
 ## 更新流程
